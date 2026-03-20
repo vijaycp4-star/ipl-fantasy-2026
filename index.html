@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPL Fantasy '26 — Prediction League</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --display: 'Bebas Neue', cursive; --body: 'DM Sans', sans-serif; --mono: 'JetBrains Mono', monospace; --gold: #F5C842; --orange: #E8872A; --green: #4ADE80; --red: #F87171; --blue: #60A5FA; --bg: #08080C; --card: #0c0c10; --border: #161618; --border2: #1a1a1e; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: #ddd; font-family: var(--body); min-height: 100vh; }
+::selection { background: #F5C84240; color: #fff; }
+::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: var(--bg); } ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+.input-field { width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid var(--border2); background: #111114; color: #ddd; font-family: var(--body); font-size: 14px; transition: border-color .15s; appearance: auto; outline: none; }
+.input-field:focus { border-color: #F5C84240; }
+.input-field::placeholder { color: #333; }
+select.input-field { cursor: pointer; }
+.primary-btn { width: 100%; padding: 14px 20px; border-radius: 12px; border: none; background: linear-gradient(135deg, var(--gold), var(--orange)); color: #000; font-family: var(--display); font-size: 16px; letter-spacing: 3px; cursor: pointer; transition: transform .1s, box-shadow .2s; box-shadow: 0 4px 20px rgba(245,200,66,.15); }
+.primary-btn:active { transform: scale(.98); }
+.primary-btn:hover { box-shadow: 0 4px 28px rgba(245,200,66,.25); }
+.primary-btn:disabled { opacity: .3; cursor: not-allowed; }
+.sm-btn { padding: 7px 14px; border-radius: 8px; border: 1px solid var(--border2); background: transparent; color: #555; cursor: pointer; font-family: var(--mono); font-size: 11px; transition: all .15s; }
+.sm-btn:hover { border-color: #333; }
+.card { padding: 20px; border-radius: 14px; background: var(--card); border: 1px solid var(--border); }
+.empty-box { text-align: center; padding: 48px 20px; border-radius: 16px; background: var(--card); border: 1px dashed var(--border2); }
+.badge { display: inline-flex; align-items: center; justify-content: center; border-radius: 28%; font-family: var(--display); color: #fff; letter-spacing: 1px; flex-shrink: 0; }
+.pill { font-size: 10px; font-family: var(--mono); padding: 3px 10px; border-radius: 6px; white-space: nowrap; display: inline-block; }
+.lbl { font-size: 9px; color: #444; font-family: var(--mono); letter-spacing: 1.5px; margin-bottom: 6px; }
+.nav-btn { flex: 1; padding: 8px 0 10px; border: none; cursor: pointer; background: transparent; display: flex; flex-direction: column; align-items: center; gap: 2px; transition: all .2s; position: relative; }
+.nav-btn:hover { color: #888 !important; }
+.tab-active { color: var(--gold) !important; border-bottom: 2px solid var(--gold) !important; }
+.del-btn { background: none; border: none; color: #2a2a2e; cursor: pointer; font-size: 14px; padding: 4px 6px; border-radius: 4px; transition: color .15s; }
+.del-btn:hover { color: var(--red) !important; }
+.stat-box { padding: 14px 10px; border-radius: 12px; background: var(--card); border: 1px solid var(--border); text-align: center; }
+.match-card { border-radius: 14px; background: var(--card); border: 1px solid var(--border); overflow: hidden; margin-bottom: 10px; }
+.team-btn { flex: 1; padding: 14px 10px; border-radius: 12px; cursor: pointer; border: 2px solid var(--border2); background: #0e0e12; display: flex; flex-direction: column; align-items: center; gap: 6px; transition: all .15s; position: relative; }
+.team-btn.selected { background: rgba(255,255,255,.03); }
+.team-btn.won { opacity: 1; }
+.team-btn.lost { opacity: .45; }
+.row-hover:hover { background: #0e0e1280 !important; }
+.toast-el { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); padding: 12px 24px; border-radius: 12px; background: var(--border2); border: 1px solid #F5C84240; color: var(--gold); font-family: var(--mono); font-size: 12px; z-index: 200; box-shadow: 0 8px 32px rgba(0,0,0,.6); animation: toastIn .3s ease; pointer-events: none; }
+.sync-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+.sync-dot.connected { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.sync-dot.offline { background: var(--red); }
+.sync-dot.loading { background: var(--gold); animation: pulse 1s infinite; }
+/* Setup screen */
+.setup-screen { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.setup-card { max-width: 520px; width: 100%; }
+.setup-card h1 { font-family: var(--display); font-size: 40px; letter-spacing: 4px; background: linear-gradient(135deg, var(--gold), var(--orange)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+.setup-card .sub { font-family: var(--mono); font-size: 11px; color: #444; letter-spacing: 1.5px; margin-bottom: 28px; }
+.steps { font-family: var(--mono); font-size: 12px; color: #666; line-height: 2; margin-bottom: 20px; padding: 16px; background: #111114; border-radius: 10px; }
+.steps b { color: #aaa; }
+.steps a { color: var(--gold); text-decoration: none; }
+.steps a:hover { text-decoration: underline; }
+@keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
+@keyframes bounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+/* ═══════════════════════════════════════════════════
+   IPL FANTASY '26 — PREDICTION LEAGUE
+   Self-hosted version with Firebase Realtime DB
+   ═══════════════════════════════════════════════════ */
+
+const TEAMS = [
+  { id:"csk", name:"Chennai Super Kings", short:"CSK", color:"#FDB913" },
+  { id:"mi", name:"Mumbai Indians", short:"MI", color:"#006CB7" },
+  { id:"rcb", name:"Royal Challengers Bengaluru", short:"RCB", color:"#D4213D" },
+  { id:"kkr", name:"Kolkata Knight Riders", short:"KKR", color:"#6A2DC8" },
+  { id:"srh", name:"Sunrisers Hyderabad", short:"SRH", color:"#F26522" },
+  { id:"rr", name:"Rajasthan Royals", short:"RR", color:"#E73895" },
+  { id:"dc", name:"Delhi Capitals", short:"DC", color:"#1768AC" },
+  { id:"pbks", name:"Punjab Kings", short:"PBKS", color:"#E41E31" },
+  { id:"gt", name:"Gujarat Titans", short:"GT", color:"#1DA1A2" },
+  { id:"lsg", name:"Lucknow Super Giants", short:"LSG", color:"#1AA1DB" },
+];
+const TM = {}; TEAMS.forEach(t => { TM[t.id]=t; TM[t.short.toLowerCase()]=t; TM[t.short]=t; TM[t.name.toLowerCase()]=t; });
+const T = id => TM[id] || null;
+const resolveTeam = s => { if(!s) return null; const k=s.trim().toLowerCase(); return TM[k] || TEAMS.find(t => t.name.toLowerCase().includes(k) || k.includes(t.short.toLowerCase())); };
+
+/* ─── Firebase REST helpers ─── */
+let FB_URL = localStorage.getItem('ipl_fb_url') || '';
+let ROOM = localStorage.getItem('ipl_room') || '';
+const fbBase = () => `${FB_URL}/rooms/${ROOM}`;
+
+async function fbGet() {
+  try {
+    const r = await fetch(`${fbBase()}/data.json`);
+    if (!r.ok) throw new Error(r.status);
+    const d = await r.json();
+    return d;
+  } catch(e) { console.error('FB GET error:', e); return null; }
+}
+
+async function fbSet(data) {
+  try {
+    await fetch(`${fbBase()}/data.json`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    return true;
+  } catch(e) { console.error('FB SET error:', e); return false; }
+}
+
+/* ─── State ─── */
+let state = {
+  players: [], matches: [], predictions: {},
+  winPts: 100, losePts: -100,
+  created: new Date().toISOString()
+};
+let tab = 'standings';
+let activePlayer = localStorage.getItem('ipl_active_player') || '';
+let matchFilter = 'upcoming';
+let editMatchId = null;
+let toastTimer = null;
+let syncStatus = 'loading'; // connected, offline, loading
+let pollInterval = null;
+
+function getState() { return state; }
+
+async function saveState(newState) {
+  state = newState || state;
+  const ok = await fbSet(state);
+  syncStatus = ok ? 'connected' : 'offline';
+  render();
+}
+
+async function loadState() {
+  syncStatus = 'loading'; render();
+  const d = await fbGet();
+  if (d) {
+    if (!d.predictions) d.predictions = {};
+    if (!d.winPts) d.winPts = 100;
+    if (!d.losePts) d.losePts = -100;
+    state = d;
+    syncStatus = 'connected';
+  } else {
+    await fbSet(state);
+    syncStatus = 'connected';
+  }
+  render();
+}
+
+function startPolling() {
+  if (pollInterval) clearInterval(pollInterval);
+  pollInterval = setInterval(async () => {
+    const d = await fbGet();
+    if (d) {
+      if (!d.predictions) d.predictions = {};
+      state = d;
+      syncStatus = 'connected';
+      render();
+    }
+  }, 12000);
+}
+
+/* ─── Toast ─── */
+function flash(msg) {
+  if (toastTimer) clearTimeout(toastTimer);
+  const el = document.getElementById('toast');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+  toastTimer = setTimeout(() => { const e = document.getElementById('toast'); if(e) e.style.display='none'; }, 2800);
+}
+
+/* ─── Helpers ─── */
+function badge(team, size=36) {
+  return `<div class="badge" style="width:${size}px;height:${size}px;font-size:${size*.32}px;background:linear-gradient(135deg,${team.color},${team.color}BB);box-shadow:0 2px 10px ${team.color}35">${team.short}</div>`;
+}
+
+function pill(text, color='#555', bdr=false) {
+  return `<span class="pill" style="color:${color};background:${color}12;${bdr?`border:1px solid ${color}20`:''}">${text}</span>`;
+}
+
+function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+function getStandings() {
+  return state.players.map(p => {
+    let correct=0, wrong=0, skipped=0, pts=0;
+    state.matches.forEach(m => {
+      if (!m.winner) return;
+      const pred = (state.predictions[m.id]||{})[p.id];
+      if (!pred) { skipped++; return; }
+      if (pred===m.winner) { correct++; pts+=state.winPts; }
+      else { wrong++; pts+=state.losePts; }
+    });
+    return { ...p, correct, wrong, skipped, pts, total:correct+wrong+skipped };
+  }).sort((a,b) => b.pts-a.pts || b.correct-a.correct);
+}
+
+/* ═══════════════════════════════════════
+   RENDER
+   ═══════════════════════════════════════ */
+function render() {
+  const app = document.getElementById('app');
+  if (!FB_URL || !ROOM) { renderSetup(app); return; }
+
+  const standings = getStandings();
+  const completedCount = state.matches.filter(m=>m.winner).length;
+  const upcomingCount = state.matches.filter(m=>!m.winner).length;
+  const upcoming = state.matches.filter(m=>!m.winner);
+  const completed = state.matches.filter(m=>m.winner);
+  const filtered = matchFilter==='upcoming' ? upcoming : completed;
+  const activePl = state.players.find(p=>p.id===activePlayer);
+
+  app.innerHTML = `
+    <!-- HEADER -->
+    <header style="background:linear-gradient(180deg,#14120A,var(--bg));border-bottom:1px solid #1a1710;padding:0 16px;position:sticky;top:0;z-index:50">
+      <div style="max-width:680px;margin:0 auto;padding:14px 0 10px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div>
+            <h1 style="font-family:var(--display);font-size:30px;letter-spacing:3px;background:linear-gradient(135deg,var(--gold),var(--orange));-webkit-background-clip:text;-webkit-text-fill-color:transparent;line-height:1">IPL FANTASY '26</h1>
+            <div style="font-family:var(--mono);font-size:10px;color:#444;letter-spacing:1.5px;margin-top:3px">
+              <span class="sync-dot ${syncStatus}"></span>
+              ${state.players.length} PLAYERS · ${state.matches.length} MATCHES · ${completedCount} DECIDED
+            </div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:8px;color:#333;font-family:var(--mono);letter-spacing:1px;margin-bottom:3px">PLAYING AS</div>
+            <select id="playerSelect" class="input-field" style="width:auto;min-width:130px;padding:6px 10px;font-size:12px;text-align:right">
+              <option value="">Select yourself...</option>
+              ${state.players.map(p=>`<option value="${p.id}" ${activePlayer===p.id?'selected':''}>${esc(p.name)}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+      </div>
+      <nav style="max-width:680px;margin:0 auto;display:flex;gap:2px">
+        ${[
+          {k:'standings',l:'Standings',i:'🏆'},
+          {k:'matches',l:'Matches',i:'⚡',badge:upcomingCount},
+          {k:'schedule',l:'Schedule',i:'📅'},
+          {k:'squad',l:'Squad',i:'👥'},
+          {k:'settings',l:'Settings',i:'⚙️'},
+        ].map(t=>`
+          <button class="nav-btn ${tab===t.k?'tab-active':''}" data-tab="${t.k}" style="color:${tab===t.k?'var(--gold)':'#444'};border-bottom:2px solid ${tab===t.k?'var(--gold)':'transparent'}">
+            <span style="font-size:15px">${t.i}</span>
+            <span style="font-size:9px;letter-spacing:1px;font-family:var(--mono)">${t.l.toUpperCase()}</span>
+            ${t.badge>0?`<span style="position:absolute;top:4px;right:calc(50% - 20px);font-size:8px;background:var(--orange);color:#000;border-radius:6px;padding:1px 5px;font-family:var(--mono);font-weight:600">${t.badge}</span>`:''}
+          </button>
+        `).join('')}
+      </nav>
+    </header>
+
+    <!-- CONTENT -->
+    <main style="max-width:680px;margin:0 auto;padding:20px 16px 80px">
+      ${tab==='standings' ? renderStandings(standings, completedCount) : ''}
+      ${tab==='matches' ? renderMatches(filtered, upcoming, completed) : ''}
+      ${tab==='schedule' ? renderSchedule() : ''}
+      ${tab==='squad' ? renderSquad() : ''}
+      ${tab==='settings' ? renderSettings(completedCount) : ''}
+    </main>
+
+    <div id="toast" class="toast-el" style="display:none"></div>
+  `;
+
+  // Bind events
+  bindEvents();
+}
+
+/* ─── STANDINGS TAB ─── */
+function renderStandings(standings, completedCount) {
+  if (standings.length === 0) return `<div class="empty-box"><div style="font-size:48px;margin-bottom:10px">🏟️</div><p style="color:#555;font-size:13px">No players yet — go to Squad to add friends</p></div>`;
+
+  let podium = '';
+  if (completedCount > 0 && standings.length >= 1) {
+    const order = [standings[1], standings[0], standings[2]];
+    podium = `<div style="display:flex;gap:8px;margin-bottom:20px;align-items:flex-end;justify-content:center">
+      ${order.map((s,idx) => {
+        if (!s) return `<div style="flex:1"></div>`;
+        const rank = idx===1?1:idx===0?2:3;
+        const h = rank===1?150:rank===2?120:95;
+        const medals = ['','🥈','🥇','🥉'];
+        const accent = rank===1?'var(--gold)':rank===2?'#C0C0C0':'#CD7F32';
+        return `<div style="flex:1;height:${h}px;border-radius:14px;background:linear-gradient(180deg,${accent}12,var(--card) 70%);border:1px solid ${accent}25;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 6px;position:relative;overflow:hidden;animation:fadeUp .4s ease ${.1*idx}s both">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,${accent},transparent)"></div>
+          <span style="font-size:22px">${medals[rank]}</span>
+          <span style="font-family:var(--body);font-weight:700;font-size:${rank===1?15:12}px;color:#ddd;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px">${esc(s.name)}</span>
+          <span style="font-family:var(--display);font-size:${rank===1?30:22}px;color:${s.pts>0?'var(--green)':s.pts<0?'var(--red)':'#555'};letter-spacing:1px">${s.pts>0?'+':''}${s.pts}</span>
+          <span style="font-size:9px;color:#555;font-family:var(--mono)">${s.correct}W ${s.wrong}L</span>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  const table = `<div style="border-radius:14px;overflow:hidden;border:1px solid var(--border)">
+    <div style="display:grid;grid-template-columns:32px 1fr 44px 44px 44px 60px;padding:10px 14px;background:#0e0e12;font-family:var(--mono);font-size:9px;color:#444;letter-spacing:1px;border-bottom:1px solid var(--border)">
+      <span>#</span><span>PLAYER</span><span style="text-align:center">✓</span><span style="text-align:center">✗</span><span style="text-align:center">—</span><span style="text-align:right">PTS</span>
+    </div>
+    ${standings.map((s,i) => `
+      <div class="row-hover" style="display:grid;grid-template-columns:32px 1fr 44px 44px 44px 60px;padding:12px 14px;align-items:center;border-bottom:1px solid #111114;background:${i===0&&completedCount>0?'linear-gradient(90deg,#F5C84206,transparent)':'transparent'};animation:fadeUp .3s ease ${i*.04}s both">
+        <span style="font-family:var(--display);font-size:18px;color:${i===0?'var(--gold)':i===1?'#aaa':i===2?'#A0724E':'#333'}">${i+1}</span>
+        <span style="font-family:var(--body);font-weight:700;font-size:14px;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(s.name)}</span>
+        <span style="text-align:center;font-family:var(--mono);font-size:13px;color:var(--green)">${s.correct}</span>
+        <span style="text-align:center;font-family:var(--mono);font-size:13px;color:var(--red)">${s.wrong}</span>
+        <span style="text-align:center;font-family:var(--mono);font-size:13px;color:#444">${s.skipped}</span>
+        <span style="text-align:right;font-family:var(--display);font-size:22px;color:${s.pts>0?'var(--green)':s.pts<0?'var(--red)':'#555'};letter-spacing:1px">${s.pts>0?'+':''}${s.pts}</span>
+      </div>
+    `).join('')}
+  </div>`;
+
+  let stats = '';
+  if (completedCount > 0) {
+    stats = `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px">
+      <div class="stat-box"><div style="font-size:9px;color:#444;font-family:var(--mono);letter-spacing:1.2px;margin-bottom:4px">LEADER</div><div style="font-size:17px;color:var(--gold);font-family:var(--display);letter-spacing:1px">${esc(standings[0]?.name||'')}</div></div>
+      <div class="stat-box"><div style="font-size:9px;color:#444;font-family:var(--mono);letter-spacing:1.2px;margin-bottom:4px">DECIDED</div><div style="font-size:17px;color:#888;font-family:var(--display);letter-spacing:1px">${completedCount} / ${state.matches.length}</div></div>
+      <div class="stat-box"><div style="font-size:9px;color:#444;font-family:var(--mono);letter-spacing:1.2px;margin-bottom:4px">TOP PTS</div><div style="font-size:17px;color:var(--green);font-family:var(--display);letter-spacing:1px">${standings[0]?.pts>0?'+':''}${standings[0]?.pts||0}</div></div>
+    </div>`;
+  }
+
+  return podium + table + stats;
+}
+
+/* ─── MATCHES TAB ─── */
+function renderMatches(filtered, upcoming, completed) {
+  const upLen = upcoming.length, compLen = completed.length;
+  const toggle = `<div style="display:flex;gap:4px;margin-bottom:16px;background:var(--card);border-radius:10px;padding:3px;border:1px solid var(--border)">
+    <button data-filter="upcoming" style="flex:1;padding:10px 8px;border-radius:8px;border:none;cursor:pointer;background:${matchFilter==='upcoming'?'var(--border2)':'transparent'};color:${matchFilter==='upcoming'?'var(--gold)':'#444'};font-family:var(--mono);font-size:10px;letter-spacing:1px">UPCOMING (${upLen})</button>
+    <button data-filter="completed" style="flex:1;padding:10px 8px;border-radius:8px;border:none;cursor:pointer;background:${matchFilter==='completed'?'var(--border2)':'transparent'};color:${matchFilter==='completed'?'var(--gold)':'#444'};font-family:var(--mono);font-size:10px;letter-spacing:1px">RESULTS (${compLen})</button>
+  </div>`;
+
+  let hint = '';
+  if (!activePlayer && matchFilter==='upcoming') {
+    hint = `<div style="padding:12px 16px;border-radius:10px;margin-bottom:14px;background:#F5C84208;border:1px solid #F5C84215;font-family:var(--mono);font-size:11px;color:#F5C84280">☝️ Select yourself in the header to make predictions</div>`;
+  }
+
+  if (filtered.length === 0) {
+    return toggle + hint + `<div class="empty-box"><div style="font-size:48px;margin-bottom:10px">${matchFilter==='upcoming'?'🎯':'📋'}</div><p style="color:#555;font-size:13px">${matchFilter==='upcoming'?'No upcoming matches. Add in Schedule tab.':'No results yet.'}</p></div>`;
+  }
+
+  const display = matchFilter==='completed' ? [...filtered].reverse() : filtered;
+  const cards = display.map((m,idx) => {
+    const t1=T(m.team1), t2=T(m.team2);
+    if (!t1||!t2) return '';
+    const preds = state.predictions[m.id] || {};
+    const myPred = activePlayer ? preds[activePlayer] : null;
+    const done = !!m.winner;
+    const wt = done ? T(m.winner) : null;
+
+    // Prediction entries
+    let predSection = '';
+    const predEntries = Object.entries(preds);
+    if (predEntries.length > 0) {
+      predSection = `<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#111114;border:1px solid var(--border)">
+        <div style="font-size:9px;color:#333;font-family:var(--mono);letter-spacing:1px;margin-bottom:8px">PREDICTIONS (${predEntries.length}/${state.players.length})</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${predEntries.map(([pid, tid]) => {
+            const pl = state.players.find(p=>p.id===pid);
+            const pt = T(tid);
+            if (!pl||!pt) return '';
+            const isCorrect = done && m.winner===tid;
+            const isWrong = done && m.winner && m.winner!==tid;
+            const c = isCorrect?'var(--green)':isWrong?'var(--red)':pt.color;
+            return `<div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:${c}12;border:1px solid ${c}20">
+              <span style="font-size:11px;font-family:var(--body);font-weight:600;color:${c}">${esc(pl.name)}</span>
+              <span style="font-size:9px;font-family:var(--mono);color:${pt.color};opacity:.8">→ ${pt.short}</span>
+              ${isCorrect?'<span style="font-size:10px">✓</span>':''}${isWrong?'<span style="font-size:10px">✗</span>':''}
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }
+
+    return `<div class="match-card" style="animation:fadeUp .25s ease ${idx*.03}s both">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #111114">
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-family:var(--display);font-size:13px;color:#333;background:#111114;padding:2px 8px;border-radius:6px">#${m.num}</span>
+          ${pill(m.stage||'League', m.stage==='League'?'#555':'var(--gold)', true)}
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          ${m.date?`<span style="font-size:10px;color:#333;font-family:var(--mono)">${esc(m.date)}</span>`:''}
+          ${m.venue?`<span style="font-size:10px;color:#2a2a2e;font-family:var(--mono)">· ${esc(m.venue)}</span>`:''}
+        </div>
+      </div>
+      <div style="padding:14px 16px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="team-btn ${myPred===m.team1?'selected':''} ${done?(m.winner===m.team1?'won':'lost'):''}" data-predict="${m.id}|${m.team1}" ${done?'disabled':''} style="border-color:${myPred===m.team1?t1.color:'var(--border2)'};${done&&m.winner===m.team1?`background:${t1.color}15`:''}${done&&m.winner!==m.team1?'opacity:.45':''}">
+            ${done&&m.winner===m.team1?`<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,${t1.color},transparent)"></div>`:''}
+            ${badge(t1, 34)}
+            <span style="font-family:var(--display);font-size:16px;letter-spacing:2px;color:${(myPred===m.team1||m.winner===m.team1)?t1.color:'#666'}">${t1.short}</span>
+            ${myPred===m.team1&&!done?'<span style="font-size:9px;color:var(--green);font-family:var(--mono)">YOUR PICK</span>':''}
+            ${done&&m.winner===m.team1?'<span style="font-size:10px">🏆</span>':''}
+          </button>
+          <div style="font-family:var(--display);font-size:14px;color:#222;padding:0 2px">VS</div>
+          <button class="team-btn ${myPred===m.team2?'selected':''} ${done?(m.winner===m.team2?'won':'lost'):''}" data-predict="${m.id}|${m.team2}" ${done?'disabled':''} style="border-color:${myPred===m.team2?t2.color:'var(--border2)'};${done&&m.winner===m.team2?`background:${t2.color}15`:''}${done&&m.winner!==m.team2?'opacity:.45':''}">
+            ${done&&m.winner===m.team2?`<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,${t2.color},transparent)"></div>`:''}
+            ${badge(t2, 34)}
+            <span style="font-family:var(--display);font-size:16px;letter-spacing:2px;color:${(myPred===m.team2||m.winner===m.team2)?t2.color:'#666'}">${t2.short}</span>
+            ${myPred===m.team2&&!done?'<span style="font-size:9px;color:var(--green);font-family:var(--mono)">YOUR PICK</span>':''}
+            ${done&&m.winner===m.team2?'<span style="font-size:10px">🏆</span>':''}
+          </button>
+        </div>
+        ${!done&&myPred?`<button data-rmpred="${m.id}" style="margin-top:8px;background:none;border:none;cursor:pointer;color:#333;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Remove my prediction</button>`:''}
+        ${predSection}
+        ${!done?`<div style="margin-top:12px;border-top:1px solid #141418;padding-top:10px">
+          <div style="font-size:9px;color:#333;font-family:var(--mono);letter-spacing:1px;margin-bottom:8px">DECLARE RESULT</div>
+          <div style="display:flex;gap:6px">
+            <button class="sm-btn" data-declare="${m.id}|${m.team1}" style="flex:1;color:${t1.color};border-color:${t1.color}30;font-family:var(--display);font-size:12px;letter-spacing:1.5px;padding:8px 10px">${t1.short} WON</button>
+            <button class="sm-btn" data-declare="${m.id}|${m.team2}" style="flex:1;color:${t2.color};border-color:${t2.color}30;font-family:var(--display);font-size:12px;letter-spacing:1.5px;padding:8px 10px">${t2.short} WON</button>
+          </div>
+        </div>`:`<button data-undo="${m.id}" style="margin-top:8px;background:none;border:none;cursor:pointer;color:#2a2a2e;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Undo result</button>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  return toggle + hint + cards;
+}
+
+/* ─── SCHEDULE TAB ─── */
+function renderSchedule() {
+  const stages = ['League','Qualifier 1','Eliminator','Qualifier 2','Final'];
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-family:var(--body);font-weight:700;font-size:15px;color:#ddd;margin-bottom:6px">Upload Schedule</div>
+      <p style="font-family:var(--mono);font-size:11px;color:#444;margin-bottom:4px;line-height:1.6">Upload a CSV. Format per line:</p>
+      <div style="font-family:var(--mono);font-size:10px;color:#555;padding:8px 12px;background:#111114;border-radius:8px;margin-bottom:12px;line-height:1.8">
+        MatchNum, Team1, Team2, Date, Venue, Stage<br>1, CSK, MI, 22-Mar, Chennai, League
+      </div>
+      <label class="sm-btn" style="color:var(--blue);border-color:#60A5FA30;padding:10px 16px;font-family:var(--display);font-size:13px;letter-spacing:1.5px;cursor:pointer;display:inline-flex">
+        📁 UPLOAD CSV <input type="file" id="csvUpload" accept=".csv,.txt" style="display:none">
+      </label>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="font-family:var(--body);font-weight:700;font-size:15px;color:#ddd;margin-bottom:12px">Add Match Manually</div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div style="flex:1"><div class="lbl">TEAM 1</div><select id="addT1" class="input-field" style="font-size:12px"><option value="">Select...</option>${TEAMS.map(t=>`<option value="${t.id}">${t.short} — ${t.name}</option>`).join('')}</select></div>
+        <div style="flex:1"><div class="lbl">TEAM 2</div><select id="addT2" class="input-field" style="font-size:12px"><option value="">Select...</option>${TEAMS.map(t=>`<option value="${t.id}">${t.short} — ${t.name}</option>`).join('')}</select></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <div style="flex:1"><div class="lbl">DATE</div><input type="text" id="addDate" class="input-field" style="font-size:12px" placeholder="e.g. 22 Mar"></div>
+        <div style="flex:1"><div class="lbl">VENUE</div><input id="addVenue" class="input-field" style="font-size:12px" placeholder="Optional"></div>
+        <div style="flex:1"><div class="lbl">STAGE</div><select id="addStage" class="input-field" style="font-size:12px">${stages.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+      </div>
+      <button id="addMatchBtn" class="primary-btn" style="font-size:14px">ADD MATCH</button>
+    </div>
+    ${state.matches.length>0?`
+      <div style="font-family:var(--display);font-size:14px;color:#333;letter-spacing:3px;margin-bottom:12px">ALL MATCHES (${state.matches.length})</div>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${state.matches.map(m => {
+          const t1=T(m.team1),t2=T(m.team2);
+          if (!t1||!t2) return '';
+          if (editMatchId===m.id) {
+            return `<div class="card" style="padding:14px">
+              <div style="display:flex;gap:8px;margin-bottom:8px">
+                <div style="flex:1"><div class="lbl">TEAM 1</div><select id="editT1" class="input-field" style="font-size:12px">${TEAMS.map(t=>`<option value="${t.id}" ${m.team1===t.id?'selected':''}>${t.short}</option>`).join('')}</select></div>
+                <div style="flex:1"><div class="lbl">TEAM 2</div><select id="editT2" class="input-field" style="font-size:12px">${TEAMS.map(t=>`<option value="${t.id}" ${m.team2===t.id?'selected':''}>${t.short}</option>`).join('')}</select></div>
+                <div style="flex:1"><div class="lbl">DATE</div><input id="editDate" class="input-field" style="font-size:12px" value="${esc(m.date||'')}"></div>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:10px">
+                <div style="flex:1"><div class="lbl">VENUE</div><input id="editVenue" class="input-field" style="font-size:12px" value="${esc(m.venue||'')}"></div>
+                <div style="flex:1"><div class="lbl">STAGE</div><select id="editStage" class="input-field" style="font-size:12px">${stages.map(s=>`<option value="${s}" ${m.stage===s?'selected':''}>${s}</option>`).join('')}</select></div>
+              </div>
+              <div style="display:flex;gap:6px">
+                <button class="sm-btn" data-saveedit="${m.id}" style="color:var(--green);border-color:#4ADE8040">Save</button>
+                <button class="sm-btn" data-canceledit>Cancel</button>
+              </div>
+            </div>`;
+          }
+          return `<div class="row-hover" style="display:flex;align-items:center;padding:10px 14px;background:var(--card);border-radius:8px;border:1px solid #131316;gap:8px">
+            <span style="font-family:var(--display);font-size:13px;color:#333;width:30px">#${m.num}</span>
+            ${badge(t1,22)}<span style="font-family:var(--mono);font-size:11px;color:${t1.color};width:38px">${t1.short}</span>
+            <span style="font-family:var(--display);font-size:10px;color:#222">vs</span>
+            <span style="font-family:var(--mono);font-size:11px;color:${t2.color};width:38px">${t2.short}</span>${badge(t2,22)}
+            <span style="flex:1;font-family:var(--mono);font-size:9px;color:#333;text-align:right">${esc(m.date||'')} ${m.stage!=='League'?'· '+m.stage:''}</span>
+            ${m.winner?pill('✓ '+T(m.winner).short,'var(--green)',true):''}
+            <button class="sm-btn" data-startedit="${m.id}" style="padding:4px 8px;font-size:10px">Edit</button>
+            <button class="del-btn" data-delmatch="${m.id}">✕</button>
+          </div>`;
+        }).join('')}
+      </div>
+    `:''}
+  `;
+}
+
+/* ─── SQUAD TAB ─── */
+function renderSquad() {
+  return `
+    <div class="card" style="margin-bottom:20px">
+      <div style="font-family:var(--body);font-weight:700;font-size:15px;color:#ddd;margin-bottom:12px">Add Player</div>
+      <div style="display:flex;gap:8px">
+        <input id="pNameInput" class="input-field" placeholder="Enter name..." maxlength="20" style="flex:1">
+        <button id="addPlayerBtn" class="primary-btn" style="width:auto;padding:10px 24px;font-size:14px">ADD</button>
+      </div>
+    </div>
+    ${state.players.length>0?`
+      <div style="font-family:var(--display);font-size:14px;color:#333;letter-spacing:3px;margin-bottom:12px">SQUAD (${state.players.length}/10)</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${state.players.map(p=>`
+          <div style="display:flex;align-items:center;padding:12px 14px;background:var(--card);border-radius:10px;border:1px solid var(--border);gap:10px">
+            <div style="width:32px;height:32px;border-radius:10px;background:${activePlayer===p.id?'linear-gradient(135deg,var(--gold),var(--orange))':'var(--border2)'};display:flex;align-items:center;justify-content:center;font-family:var(--display);font-size:14px;color:${activePlayer===p.id?'#000':'#444'}">${esc(p.name.charAt(0).toUpperCase())}</div>
+            <span style="flex:1;font-family:var(--body);font-weight:600;font-size:14px;color:#ddd">${esc(p.name)}</span>
+            <button class="del-btn" data-rmplayer="${p.id}">✕</button>
+          </div>
+        `).join('')}
+      </div>
+    `:''}
+  `;
+}
+
+/* ─── SETTINGS TAB ─── */
+function renderSettings(completedCount) {
+  return `
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-family:var(--body);font-weight:700;font-size:15px;color:#ddd;margin-bottom:8px">Tournament</div>
+      <div style="font-family:var(--mono);font-size:12px;color:#555;line-height:1.8">
+        Players: ${state.players.length}/10<br>Matches: ${state.matches.length} total · ${completedCount} decided<br>Points: +${state.winPts} correct / ${state.losePts} wrong / 0 skip
+      </div>
+      <div style="margin-top:10px;padding:8px 12px;border-radius:8px;background:#F5C84208;border:1px solid #F5C84215;font-family:var(--mono);font-size:10px;color:#F5C84280">
+        📡 Connected to Firebase · Room: ${esc(ROOM)}
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-family:var(--body);font-weight:700;font-size:15px;color:#ddd;margin-bottom:6px">Backup & Restore</div>
+      <p style="font-family:var(--mono);font-size:11px;color:#444;margin-bottom:14px;line-height:1.6">Export all data as JSON or restore from a backup.</p>
+      <div style="display:flex;gap:8px">
+        <button id="exportBtn" class="sm-btn" style="color:var(--green);border-color:#4ADE8030;padding:10px 16px;font-family:var(--display);font-size:13px;letter-spacing:1.5px">⬇ EXPORT</button>
+        <label class="sm-btn" style="color:var(--blue);border-color:#60A5FA30;padding:10px 16px;font-family:var(--display);font-size:13px;letter-spacing:1.5px;cursor:pointer;display:inline-flex;align-items:center">⬆ IMPORT<input type="file" id="importFile" accept=".json" style="display:none"></label>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-family:var(--body);font-weight:700;font-size:15px;color:#ddd;margin-bottom:6px">Change Room</div>
+      <p style="font-family:var(--mono);font-size:11px;color:#444;margin-bottom:10px">Switch Firebase URL or room code.</p>
+      <button id="changeRoomBtn" class="sm-btn" style="color:var(--gold);border-color:#F5C84230;padding:10px 16px;font-family:var(--display);font-size:13px;letter-spacing:1.5px">CHANGE ROOM</button>
+    </div>
+    <div class="card" style="border-color:#F8717120">
+      <div style="font-family:var(--body);font-weight:700;font-size:15px;color:var(--red);margin-bottom:6px">Danger Zone</div>
+      <p style="font-family:var(--mono);font-size:11px;color:#444;margin-bottom:14px">Permanently delete all players, matches, and predictions.</p>
+      <button id="resetBtn" class="sm-btn" style="color:var(--red);border-color:#F8717130;padding:10px 16px;font-family:var(--display);font-size:13px;letter-spacing:1.5px">RESET ALL DATA</button>
+    </div>
+  `;
+}
+
+/* ─── SETUP SCREEN ─── */
+function renderSetup(app) {
+  app.innerHTML = `
+    <div class="setup-screen">
+      <div class="setup-card">
+        <h1>IPL FANTASY '26</h1>
+        <div class="sub">PREDICTION LEAGUE — SELF-HOSTED</div>
+        <div class="card" style="margin-bottom:16px">
+          <div style="font-family:var(--body);font-weight:700;font-size:15px;color:#ddd;margin-bottom:12px">Quick Setup (2 minutes)</div>
+          <div class="steps">
+            <b>1.</b> Go to <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a><br>
+            <b>2.</b> Create a new project (any name, disable Analytics)<br>
+            <b>3.</b> Go to <b>Build → Realtime Database → Create Database</b><br>
+            <b>4.</b> Select any region → Start in <b>test mode</b><br>
+            <b>5.</b> Copy the database URL (looks like <b>https://xxx.firebaseio.com</b>)
+          </div>
+          <div style="margin-bottom:14px">
+            <div class="lbl">FIREBASE DATABASE URL</div>
+            <input id="setupUrl" class="input-field" placeholder="https://your-project.firebaseio.com" value="${esc(FB_URL)}">
+          </div>
+          <div style="margin-bottom:16px">
+            <div class="lbl">ROOM CODE (share with friends)</div>
+            <input id="setupRoom" class="input-field" placeholder="e.g. our-ipl-league" value="${esc(ROOM)}">
+            <div style="font-family:var(--mono);font-size:10px;color:#333;margin-top:4px">Everyone uses the same room code to see shared data</div>
+          </div>
+          <button id="setupBtn" class="primary-btn">CONNECT & START</button>
+          <div id="setupError" style="margin-top:10px;color:var(--red);font-family:var(--mono);font-size:11px;display:none"></div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:#333;text-align:center;line-height:1.6">
+          Free Firebase plan supports 100 simultaneous connections<br>and 1 GB storage — more than enough for your league
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.getElementById('setupBtn').onclick = async () => {
+    const url = document.getElementById('setupUrl').value.trim().replace(/\/$/,'');
+    const room = document.getElementById('setupRoom').value.trim().replace(/[^a-zA-Z0-9_-]/g, '-');
+    const err = document.getElementById('setupError');
+    if (!url || !url.startsWith('https://')) { err.textContent='Enter a valid Firebase URL starting with https://'; err.style.display='block'; return; }
+    if (!room) { err.textContent='Enter a room code'; err.style.display='block'; return; }
+    err.style.display='none';
+    FB_URL = url; ROOM = room;
+    localStorage.setItem('ipl_fb_url', FB_URL);
+    localStorage.setItem('ipl_room', ROOM);
+    await loadState();
+    startPolling();
+    render();
+  };
+}
+
+/* ═══════════════════════════════════════
+   EVENT BINDING
+   ═══════════════════════════════════════ */
+function bindEvents() {
+  // Player select
+  const ps = document.getElementById('playerSelect');
+  if (ps) ps.onchange = () => { activePlayer = ps.value; localStorage.setItem('ipl_active_player', activePlayer); render(); };
+
+  // Tab nav
+  document.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { tab = b.dataset.tab; render(); });
+
+  // Match filter
+  document.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => { matchFilter = b.dataset.filter; render(); });
+
+  // Predict
+  document.querySelectorAll('[data-predict]').forEach(b => b.onclick = async () => {
+    if (!activePlayer) { flash('Select who you are first!'); return; }
+    const [mid, tid] = b.dataset.predict.split('|');
+    const m = state.matches.find(x=>x.id===mid);
+    if (!m || m.winner) return;
+    const np = { ...state.predictions };
+    if (!np[mid]) np[mid] = {};
+    np[mid] = { ...np[mid], [activePlayer]: tid };
+    const pn = state.players.find(p=>p.id===activePlayer)?.name;
+    await saveState({ ...state, predictions: np });
+    flash(`${pn} → ${T(tid).short}`);
+  });
+
+  // Remove prediction
+  document.querySelectorAll('[data-rmpred]').forEach(b => b.onclick = async () => {
+    const mid = b.dataset.rmpred;
+    const np = { ...state.predictions };
+    if (np[mid]) { const c = { ...np[mid] }; delete c[activePlayer]; np[mid] = c; }
+    await saveState({ ...state, predictions: np });
+    flash('Prediction removed');
+  });
+
+  // Declare winner
+  document.querySelectorAll('[data-declare]').forEach(b => b.onclick = async () => {
+    const [mid, tid] = b.dataset.declare.split('|');
+    const nm = state.matches.map(m => m.id===mid ? { ...m, winner: tid } : m);
+    await saveState({ ...state, matches: nm });
+    flash(`${T(tid).short} wins! Scores updated.`);
+  });
+
+  // Undo result
+  document.querySelectorAll('[data-undo]').forEach(b => b.onclick = async () => {
+    const nm = state.matches.map(m => m.id===b.dataset.undo ? { ...m, winner: null } : m);
+    await saveState({ ...state, matches: nm });
+    flash('Result undone');
+  });
+
+  // Add player
+  const apb = document.getElementById('addPlayerBtn');
+  const apn = document.getElementById('pNameInput');
+  if (apb) apb.onclick = async () => {
+    const name = apn?.value?.trim();
+    if (!name) return;
+    if (state.players.length >= 10) { flash('Max 10 players'); return; }
+    if (state.players.some(p => p.name.toLowerCase() === name.toLowerCase())) { flash('Name taken!'); return; }
+    const p = { id: Date.now().toString(), name };
+    await saveState({ ...state, players: [...state.players, p] });
+    flash(`${name} joined!`);
+  };
+  if (apn) apn.onkeydown = (e) => { if (e.key === 'Enter') apb?.click(); };
+
+  // Remove player
+  document.querySelectorAll('[data-rmplayer]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.rmplayer;
+    const p = state.players.find(x => x.id === id);
+    const np = { ...state.predictions };
+    Object.keys(np).forEach(mid => { if (np[mid][id]) { const c = { ...np[mid] }; delete c[id]; np[mid] = c; } });
+    await saveState({ ...state, players: state.players.filter(x => x.id !== id), predictions: np });
+    if (activePlayer === id) { activePlayer = ''; localStorage.setItem('ipl_active_player', ''); }
+    flash(`${p?.name} removed`);
+  });
+
+  // Add match
+  const amb = document.getElementById('addMatchBtn');
+  if (amb) amb.onclick = async () => {
+    const t1 = document.getElementById('addT1')?.value;
+    const t2 = document.getElementById('addT2')?.value;
+    const date = document.getElementById('addDate')?.value?.trim() || null;
+    const venue = document.getElementById('addVenue')?.value?.trim() || null;
+    const stage = document.getElementById('addStage')?.value || 'League';
+    if (!t1 || !t2) { flash('Select both teams'); return; }
+    if (t1 === t2) { flash('Pick different teams'); return; }
+    const m = { id: Date.now().toString(), num: state.matches.length + 1, team1: t1, team2: t2, date, venue, stage, winner: null };
+    await saveState({ ...state, matches: [...state.matches, m] });
+    flash(`Match #${m.num} added`);
+  };
+
+  // CSV upload
+  const csv = document.getElementById('csvUpload');
+  if (csv) csv.onchange = (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = async (ev) => {
+      const lines = ev.target.result.split('\n').map(l => l.trim()).filter(Boolean);
+      const nm = [...state.matches];
+      let added = 0;
+      for (const line of lines) {
+        const parts = line.split(',').map(s => s.trim());
+        if (parts.length < 2) continue;
+        let t1s, t2s, date, venue, stg;
+        const first = !isNaN(parts[0]);
+        if (first) [, t1s, t2s, date, venue, stg] = parts;
+        else [t1s, t2s, date, venue, stg] = parts;
+        const t1 = resolveTeam(t1s), t2 = resolveTeam(t2s);
+        if (t1 && t2 && t1.id !== t2.id) {
+          nm.push({ id: Date.now().toString() + added, num: nm.length + 1, team1: t1.id, team2: t2.id, date: date || null, venue: venue || null, stage: stg || 'League', winner: null });
+          added++;
+        }
+      }
+      if (added > 0) { await saveState({ ...state, matches: nm }); flash(`${added} matches imported!`); }
+      else flash('No valid matches found');
+    };
+    r.readAsText(f); e.target.value = '';
+  };
+
+  // Edit match
+  document.querySelectorAll('[data-startedit]').forEach(b => b.onclick = () => { editMatchId = b.dataset.startedit; render(); });
+  document.querySelectorAll('[data-canceledit]').forEach(b => b.onclick = () => { editMatchId = null; render(); });
+  document.querySelectorAll('[data-saveedit]').forEach(b => b.onclick = async () => {
+    const t1 = document.getElementById('editT1')?.value;
+    const t2 = document.getElementById('editT2')?.value;
+    const date = document.getElementById('editDate')?.value?.trim() || null;
+    const venue = document.getElementById('editVenue')?.value?.trim() || null;
+    const stg = document.getElementById('editStage')?.value || 'League';
+    if (!t1 || !t2 || t1 === t2) { flash('Invalid teams'); return; }
+    const nm = state.matches.map(m => m.id === b.dataset.saveedit ? { ...m, team1: t1, team2: t2, date, venue, stage: stg } : m);
+    editMatchId = null;
+    await saveState({ ...state, matches: nm });
+    flash('Match updated');
+  });
+
+  // Delete match
+  document.querySelectorAll('[data-delmatch]').forEach(b => b.onclick = async () => {
+    const id = b.dataset.delmatch;
+    const np = { ...state.predictions }; delete np[id];
+    const nm = state.matches.filter(m => m.id !== id).map((m, i) => ({ ...m, num: i + 1 }));
+    await saveState({ ...state, matches: nm, predictions: np });
+    flash('Match removed');
+  });
+
+  // Export
+  const eb = document.getElementById('exportBtn');
+  if (eb) eb.onclick = () => {
+    const b = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const u = URL.createObjectURL(b);
+    Object.assign(document.createElement('a'), { href: u, download: `ipl-fantasy-backup-${new Date().toISOString().slice(0, 10)}.json` }).click();
+    URL.revokeObjectURL(u); flash('Backup saved!');
+  };
+
+  // Import
+  const ib = document.getElementById('importFile');
+  if (ib) ib.onchange = (e) => {
+    const f = e.target.files?.[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = async (ev) => {
+      try {
+        const d = JSON.parse(ev.target.result);
+        if (d.players && d.matches) { await saveState(d); flash('Restored!'); }
+        else flash('Invalid file');
+      } catch { flash('Read error'); }
+    };
+    r.readAsText(f); e.target.value = '';
+  };
+
+  // Change room
+  const cr = document.getElementById('changeRoomBtn');
+  if (cr) cr.onclick = () => {
+    FB_URL = ''; ROOM = '';
+    localStorage.removeItem('ipl_fb_url');
+    localStorage.removeItem('ipl_room');
+    if (pollInterval) clearInterval(pollInterval);
+    render();
+  };
+
+  // Reset
+  const rb = document.getElementById('resetBtn');
+  if (rb) rb.onclick = async () => {
+    if (!confirm('Delete ALL players, matches, and predictions? This cannot be undone.')) return;
+    activePlayer = ''; localStorage.setItem('ipl_active_player', '');
+    await saveState({ players: [], matches: [], predictions: {}, winPts: 100, losePts: -100, created: new Date().toISOString() });
+    flash('Reset complete');
+  };
+}
+
+/* ═══════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════ */
+(async function init() {
+  render(); // show setup or loading
+  if (FB_URL && ROOM) {
+    await loadState();
+    startPolling();
+  }
+})();
+</script>
+</body>
+</html>
