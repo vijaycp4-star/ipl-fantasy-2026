@@ -100,6 +100,7 @@ function normalize(d) {
   d.predictions = d.predictions || {};
   d.winPts = typeof d.winPts === 'number' ? d.winPts : 100;
   d.losePts = typeof d.losePts === 'number' ? d.losePts : -100;
+  d.stake = typeof d.stake === 'number' ? d.stake : 100;
   d.created = d.created || new Date().toISOString();
   return d;
 }
@@ -171,16 +172,33 @@ function getStandings() {
   var players = state.players || [];
   var matches = state.matches || [];
   var preds = state.predictions || {};
-  return players.map(function(p) {
-    var correct=0, wrong=0, skipped=0, pts=0;
-    matches.forEach(function(m) {
-      if (!m.winner) return;
-      var pred = (preds[m.id]||{})[p.id];
-      if (!pred) { skipped++; return; }
-      if (pred===m.winner) { correct++; pts+=state.winPts; }
-      else { wrong++; pts+=state.losePts; }
+  var stake = state.stake || 100;
+
+  // Init per-player accumulators
+  var acc = {};
+  players.forEach(function(p) { acc[p.id] = { correct:0, wrong:0, skipped:0, pts:0 }; });
+
+  // For each decided match, compute the pot
+  matches.forEach(function(m) {
+    if (!m.winner) return;
+    var mPreds = preds[m.id] || {};
+    var winners = [], losers = [];
+    players.forEach(function(p) {
+      var pred = mPreds[p.id];
+      if (!pred) { acc[p.id].skipped++; return; }
+      if (pred === m.winner) winners.push(p.id);
+      else losers.push(p.id);
     });
-    return { id:p.id, name:p.name, correct:correct, wrong:wrong, skipped:skipped, pts:pts };
+    // Losers pay into the pot, winners split it
+    var pot = losers.length * stake;
+    var winShare = winners.length > 0 ? Math.round(pot / winners.length) : 0;
+    losers.forEach(function(id) { acc[id].wrong++; acc[id].pts -= stake; });
+    winners.forEach(function(id) { acc[id].correct++; acc[id].pts += winShare; });
+  });
+
+  return players.map(function(p) {
+    var a = acc[p.id];
+    return { id:p.id, name:p.name, correct:a.correct, wrong:a.wrong, skipped:a.skipped, pts:a.pts };
   }).sort(function(a,b) { return b.pts-a.pts || b.correct-a.correct; });
 }
 
@@ -264,7 +282,7 @@ function renderStandings(standings, completedCount) {
         '<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,'+accent+',transparent)"></div>' +
         '<span style="font-size:22px">'+medals[rank]+'</span>' +
         '<span style="font-family:var(--body);font-weight:700;font-size:'+(rank===1?15:12)+'px;color:#ddd;text-align:center;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px">'+esc(s.name)+'</span>' +
-        '<span style="font-family:var(--display);font-size:'+(rank===1?30:22)+'px;color:'+(s.pts>0?'var(--green)':s.pts<0?'var(--red)':'#555')+';letter-spacing:1px">'+(s.pts>0?'+':'')+s.pts+'</span>' +
+        '<span style="font-family:var(--display);font-size:'+(rank===1?30:22)+'px;color:'+(s.pts>0?'var(--green)':s.pts<0?'var(--red)':'#555')+';letter-spacing:1px">'+(s.pts>0?'+₹':s.pts<0?'-₹':'₹')+Math.abs(s.pts)+'</span>' +
         '<span style="font-size:9px;color:#555;font-family:var(--mono)">'+s.correct+'W '+s.wrong+'L</span>' +
       '</div>';
     });
@@ -273,7 +291,7 @@ function renderStandings(standings, completedCount) {
 
   var tbl = '<div style="border-radius:14px;overflow:hidden;border:1px solid var(--border)">' +
     '<div style="display:grid;grid-template-columns:32px 1fr 44px 44px 44px 60px;padding:10px 14px;background:#0e0e12;font-family:var(--mono);font-size:9px;color:#444;letter-spacing:1px;border-bottom:1px solid var(--border)">' +
-      '<span>#</span><span>PLAYER</span><span style="text-align:center">✓</span><span style="text-align:center">✗</span><span style="text-align:center">—</span><span style="text-align:right">PTS</span>' +
+      '<span>#</span><span>PLAYER</span><span style="text-align:center">✓</span><span style="text-align:center">✗</span><span style="text-align:center">—</span><span style="text-align:right">NET ₹</span>' +
     '</div>';
   standings.forEach(function(s, i) {
     tbl += '<div class="row-hover" style="display:grid;grid-template-columns:32px 1fr 44px 44px 44px 60px;padding:12px 14px;align-items:center;border-bottom:1px solid #111114;background:'+(i===0&&completedCount>0?'linear-gradient(90deg,#F5C84206,transparent)':'transparent')+'">' +
@@ -282,7 +300,7 @@ function renderStandings(standings, completedCount) {
       '<span style="text-align:center;font-family:var(--mono);font-size:13px;color:var(--green)">'+s.correct+'</span>' +
       '<span style="text-align:center;font-family:var(--mono);font-size:13px;color:var(--red)">'+s.wrong+'</span>' +
       '<span style="text-align:center;font-family:var(--mono);font-size:13px;color:#444">'+s.skipped+'</span>' +
-      '<span style="text-align:right;font-family:var(--display);font-size:22px;color:'+(s.pts>0?'var(--green)':s.pts<0?'var(--red)':'#555')+';letter-spacing:1px">'+(s.pts>0?'+':'')+s.pts+'</span>' +
+      '<span style="text-align:right;font-family:var(--display);font-size:22px;color:'+(s.pts>0?'var(--green)':s.pts<0?'var(--red)':'#555')+';letter-spacing:1px">'+(s.pts>0?'+₹':s.pts<0?'-₹':'₹')+Math.abs(s.pts)+'</span>' +
     '</div>';
   });
   tbl += '</div>';
@@ -292,7 +310,7 @@ function renderStandings(standings, completedCount) {
     stats = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px">' +
       '<div class="stat-box"><div style="font-size:9px;color:#444;font-family:var(--mono);letter-spacing:1.2px;margin-bottom:4px">LEADER</div><div style="font-size:17px;color:var(--gold);font-family:var(--display);letter-spacing:1px">'+esc(standings[0].name)+'</div></div>' +
       '<div class="stat-box"><div style="font-size:9px;color:#444;font-family:var(--mono);letter-spacing:1.2px;margin-bottom:4px">DECIDED</div><div style="font-size:17px;color:#888;font-family:var(--display);letter-spacing:1px">'+completedCount+' / '+(state.matches||[]).length+'</div></div>' +
-      '<div class="stat-box"><div style="font-size:9px;color:#444;font-family:var(--mono);letter-spacing:1.2px;margin-bottom:4px">TOP PTS</div><div style="font-size:17px;color:var(--green);font-family:var(--display);letter-spacing:1px">'+(standings[0].pts>0?'+':'')+standings[0].pts+'</div></div>' +
+      '<div class="stat-box"><div style="font-size:9px;color:#444;font-family:var(--mono);letter-spacing:1.2px;margin-bottom:4px">TOP NET</div><div style="font-size:17px;color:var(--green);font-family:var(--display);letter-spacing:1px">'+(standings[0].pts>0?'+₹':standings[0].pts<0?'-₹':'₹')+Math.abs(standings[0].pts)+'</div></div>' +
     '</div>';
   }
   return podium + tbl + stats;
@@ -363,9 +381,21 @@ function renderMatches() {
     if (!done && myPred) html += '<button data-rmpred="'+m.id+'" style="margin-top:8px;background:none;border:none;cursor:pointer;color:#333;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Remove my prediction</button>';
     // Predictions list
     if (predEntries.length > 0) {
-      html += '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#111114;border:1px solid var(--border)">' +
-        '<div style="font-size:9px;color:#333;font-family:var(--mono);letter-spacing:1px;margin-bottom:8px">PREDICTIONS ('+predEntries.length+'/'+(state.players||[]).length+')</div>' +
-        '<div style="display:flex;flex-wrap:wrap;gap:6px">';
+      var stake = state.stake || 100;
+      var mWinners = [], mLosers = [];
+      if (done) {
+        predEntries.forEach(function(pid) { if (preds[pid]===m.winner) mWinners.push(pid); else mLosers.push(pid); });
+      }
+      var pot = mLosers.length * stake;
+      var winShare = mWinners.length > 0 ? Math.round(pot / mWinners.length) : 0;
+
+      html += '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#111114;border:1px solid var(--border)">';
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+        '<span style="font-size:9px;color:#333;font-family:var(--mono);letter-spacing:1px">PREDICTIONS ('+predEntries.length+'/'+(state.players||[]).length+')</span>';
+      if (done && pot > 0) {
+        html += '<span style="font-size:10px;font-family:var(--mono);color:var(--gold)">POT: ₹'+pot+' → split '+mWinners.length+'</span>';
+      }
+      html += '</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
       predEntries.forEach(function(pid) {
         var tid = preds[pid];
         var pl = (state.players||[]).find(function(p){return p.id===pid;});
@@ -374,10 +404,14 @@ function renderMatches() {
         var isCorrect = done && m.winner===tid;
         var isWrong = done && m.winner && m.winner!==tid;
         var c = isCorrect?'var(--green)':isWrong?'var(--red)':pt.color;
+        var amtText = '';
+        if (isCorrect && winShare > 0) amtText = ' <span style="font-size:9px;font-family:var(--mono);color:var(--green)">+₹'+winShare+'</span>';
+        if (isWrong) amtText = ' <span style="font-size:9px;font-family:var(--mono);color:var(--red)">-₹'+stake+'</span>';
         html += '<div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:'+c+'12;border:1px solid '+c+'20">' +
           '<span style="font-size:11px;font-family:var(--body);font-weight:600;color:'+c+'">'+esc(pl.name)+'</span>' +
           '<span style="font-size:9px;font-family:var(--mono);color:'+pt.color+';opacity:.8">→ '+pt.short+'</span>' +
           (isCorrect?'<span style="font-size:10px">✓</span>':'') + (isWrong?'<span style="font-size:10px">✗</span>':'') +
+          amtText +
         '</div>';
       });
       html += '</div></div>';
@@ -487,7 +521,7 @@ function renderSquad() {
 function renderSettings(completedCount) {
   return '<div class="card" style="margin-bottom:12px">' +
     '<div style="font-family:var(--body);font-weight:700;font-size:15px;color:#ddd;margin-bottom:8px">Tournament</div>' +
-    '<div style="font-family:var(--mono);font-size:12px;color:#555;line-height:1.8">Players: '+(state.players||[]).length+'/10<br>Matches: '+(state.matches||[]).length+' total · '+completedCount+' decided<br>Points: +'+state.winPts+' correct / '+state.losePts+' wrong / 0 skip</div>' +
+    '<div style="font-family:var(--mono);font-size:12px;color:#555;line-height:1.8">Players: '+(state.players||[]).length+'/10<br>Matches: '+(state.matches||[]).length+' total · '+completedCount+' decided<br>Stake: ₹'+(state.stake||100)+' per match (losers pay, winners split the pot)</div>' +
     '<div style="margin-top:10px;padding:8px 12px;border-radius:8px;background:#F5C84208;border:1px solid #F5C84215;font-family:var(--mono);font-size:10px;color:#F5C84280">📡 Connected to Firebase · Room: '+esc(ROOM)+'</div>' +
   '</div>' +
   '<div class="card" style="margin-bottom:12px">' +
