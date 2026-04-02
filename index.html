@@ -343,7 +343,8 @@ function renderMatches() {
     var preds = (state.predictions||{})[m.id] || {};
     var myPred = activePlayer ? preds[activePlayer] : null;
     var done = !!m.winner;
-    var predEntries = Object.keys(preds);
+    var playerIds = (state.players||[]).map(function(p){return p.id;});
+    var predEntries = Object.keys(preds).filter(function(pid){return playerIds.indexOf(pid)>=0;});
 
     html += '<div class="match-card">';
     // Header
