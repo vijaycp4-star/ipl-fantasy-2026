@@ -168,6 +168,70 @@ function pill(text, color, bdr) {
 }
 function esc(s) { if (!s) return ''; var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
 
+/* ─── CUTOFF TIME LOGIC ─── */
+var MONTHS = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function parseMatchDate(dateStr) {
+  if (!dateStr) return null;
+  // Handle "28-Mar", "28 Mar", "04-Apr" etc.
+  var parts = dateStr.trim().split(/[-\s\/]+/);
+  if (parts.length < 2) return null;
+  var day = parseInt(parts[0], 10);
+  var monStr = parts[1].toLowerCase().substring(0, 3);
+  var mon = MONTHS[monStr];
+  if (isNaN(day) || mon === undefined) return null;
+  // Year: assume 2026; if month is before March assume next year context doesn't apply for IPL
+  return new Date(2026, mon, day);
+}
+
+function getCutoff(match) {
+  // Group matches by date to detect double headers
+  var matches = state.matches || [];
+  var matchDate = match.date;
+  if (!matchDate) return null;
+  var sameDay = matches.filter(function(m) { return m.date === matchDate; });
+  sameDay.sort(function(a, b) { return a.num - b.num; });
+
+  var isDoubleHeader = sameDay.length >= 2;
+  var isFirstMatch = isDoubleHeader && sameDay[0].id === match.id;
+
+  // Cutoff hours in IST
+  var cutoffHourIST, cutoffMinIST;
+  if (isDoubleHeader && isFirstMatch) {
+    cutoffHourIST = 15; cutoffMinIST = 30; // 3:30 PM IST
+  } else {
+    cutoffHourIST = 19; cutoffMinIST = 30; // 7:30 PM IST
+  }
+
+  var d = parseMatchDate(matchDate);
+  if (!d) return null;
+  // Convert IST to UTC: IST = UTC + 5:30, so UTC = IST - 5:30
+  d.setUTCHours(cutoffHourIST - 5);
+  d.setUTCMinutes(cutoffMinIST - 30);
+  d.setUTCSeconds(0);
+  d.setUTCMilliseconds(0);
+  return d;
+}
+
+function isLocked(match) {
+  if (match.winner) return true; // already decided
+  var cutoff = getCutoff(match);
+  if (!cutoff) return false; // no date = no lock
+  return new Date() >= cutoff;
+}
+
+function getCutoffLabel(match) {
+  var cutoff = getCutoff(match);
+  if (!cutoff) return '';
+  var now = new Date();
+  if (now >= cutoff) return 'LOCKED';
+  var diff = cutoff - now;
+  var hrs = Math.floor(diff / 3600000);
+  var mins = Math.floor((diff % 3600000) / 60000);
+  if (hrs > 24) return '';
+  if (hrs > 0) return hrs + 'h ' + mins + 'm left';
+  return mins + 'm left';
+}
+
 function getStandings() {
   var players = state.players || [];
   var matches = state.matches || [];
@@ -343,6 +407,9 @@ function renderMatches() {
     var preds = (state.predictions||{})[m.id] || {};
     var myPred = activePlayer ? preds[activePlayer] : null;
     var done = !!m.winner;
+    var locked = !done && isLocked(m);
+    var cutoffLabel = !done ? getCutoffLabel(m) : '';
+    var noPredict = done || locked;
     var playerIds = (state.players||[]).map(function(p){return p.id;});
     var predEntries = Object.keys(preds).filter(function(pid){return playerIds.indexOf(pid)>=0;});
 
@@ -352,6 +419,8 @@ function renderMatches() {
       '<div style="display:flex;gap:8px;align-items:center">' +
         '<span style="font-family:var(--display);font-size:13px;color:#333;background:#111114;padding:2px 8px;border-radius:6px">#'+m.num+'</span>' +
         pill(m.stage||'League', m.stage==='League'?'#555':'var(--gold)', true) +
+        (locked?'<span style="font-size:9px;font-family:var(--mono);color:var(--red);background:#F8717112;padding:2px 8px;border-radius:4px;border:1px solid #F8717120">🔒 LOCKED</span>':'') +
+        (cutoffLabel && cutoffLabel!=='LOCKED'?'<span style="font-size:9px;font-family:var(--mono);color:var(--orange);background:#E8872A12;padding:2px 8px;border-radius:4px;border:1px solid #E8872A20">⏱ '+cutoffLabel+'</span>':'') +
       '</div>' +
       '<div style="display:flex;gap:6px;align-items:center">' +
         (m.date?'<span style="font-size:10px;color:#333;font-family:var(--mono)">'+esc(m.date)+'</span>':'') +
@@ -361,7 +430,7 @@ function renderMatches() {
     // Teams
     html += '<div style="padding:14px 16px"><div style="display:flex;align-items:center;gap:8px">';
     // Team 1
-    html += '<button '+(done?'disabled':'')+' data-predict="'+m.id+'|'+m.team1+'" class="team-btn" style="border-color:'+(myPred===m.team1?t1.color:'var(--border2)')+';'+(done&&m.winner===m.team1?'background:'+t1.color+'15;':'')+(done&&m.winner!==m.team1?'opacity:.45;':'')+'">' +
+    html += '<button '+(noPredict?'disabled':'')+' data-predict="'+m.id+'|'+m.team1+'" class="team-btn" style="border-color:'+(myPred===m.team1?t1.color:'var(--border2)')+';'+(done&&m.winner===m.team1?'background:'+t1.color+'15;':'')+(done&&m.winner!==m.team1?'opacity:.45;':'')+(locked?'opacity:.6;cursor:not-allowed;':'')+'">' +
       (done&&m.winner===m.team1?'<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,'+t1.color+',transparent)"></div>':'') +
       badge(t1, 34) +
       '<span style="font-family:var(--display);font-size:16px;letter-spacing:2px;color:'+((myPred===m.team1||m.winner===m.team1)?t1.color:'#666')+'">'+t1.short+'</span>' +
@@ -370,7 +439,7 @@ function renderMatches() {
     '</button>';
     html += '<div style="font-family:var(--display);font-size:14px;color:#222;padding:0 2px">VS</div>';
     // Team 2
-    html += '<button '+(done?'disabled':'')+' data-predict="'+m.id+'|'+m.team2+'" class="team-btn" style="border-color:'+(myPred===m.team2?t2.color:'var(--border2)')+';'+(done&&m.winner===m.team2?'background:'+t2.color+'15;':'')+(done&&m.winner!==m.team2?'opacity:.45;':'')+'">' +
+    html += '<button '+(noPredict?'disabled':'')+' data-predict="'+m.id+'|'+m.team2+'" class="team-btn" style="border-color:'+(myPred===m.team2?t2.color:'var(--border2)')+';'+(done&&m.winner===m.team2?'background:'+t2.color+'15;':'')+(done&&m.winner!==m.team2?'opacity:.45;':'')+(locked?'opacity:.6;cursor:not-allowed;':'')+'">' +
       (done&&m.winner===m.team2?'<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,'+t2.color+',transparent)"></div>':'') +
       badge(t2, 34) +
       '<span style="font-family:var(--display);font-size:16px;letter-spacing:2px;color:'+((myPred===m.team2||m.winner===m.team2)?t2.color:'#666')+'">'+t2.short+'</span>' +
@@ -379,7 +448,7 @@ function renderMatches() {
     '</button>';
     html += '</div>';
     // Remove prediction
-    if (!done && myPred) html += '<button data-rmpred="'+m.id+'" style="margin-top:8px;background:none;border:none;cursor:pointer;color:#333;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Remove my prediction</button>';
+    if (!done && !locked && myPred) html += '<button data-rmpred="'+m.id+'" style="margin-top:8px;background:none;border:none;cursor:pointer;color:#333;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Remove my prediction</button>';
     // Predictions list
     if (predEntries.length > 0) {
       var stake = state.stake || 100;
@@ -598,6 +667,7 @@ function bindEvents() {
       var mid=parts[0], tid=parts[1];
       var m = (state.matches||[]).find(function(x){return x.id===mid;});
       if (!m || m.winner) return;
+      if (isLocked(m)) { flash('🔒 Predictions locked for this match!'); return; }
       var np = JSON.parse(JSON.stringify(state.predictions||{}));
       if (!np[mid]) np[mid] = {};
       np[mid][activePlayer] = tid;
@@ -609,6 +679,9 @@ function bindEvents() {
   // Remove prediction
   document.querySelectorAll('[data-rmpred]').forEach(function(b) {
     b.onclick = function() {
+      var mid = b.getAttribute('data-rmpred');
+      var m = (state.matches||[]).find(function(x){return x.id===mid;});
+      if (m && isLocked(m)) { flash('🔒 Predictions locked for this match!'); return; }
       var mid = b.getAttribute('data-rmpred');
       var np = JSON.parse(JSON.stringify(state.predictions||{}));
       if (np[mid] && np[mid][activePlayer]) delete np[mid][activePlayer];
