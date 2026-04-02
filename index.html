@@ -179,8 +179,8 @@ function parseMatchDate(dateStr) {
   var monStr = parts[1].toLowerCase().substring(0, 3);
   var mon = MONTHS[monStr];
   if (isNaN(day) || mon === undefined) return null;
-  // Year: assume 2026; if month is before March assume next year context doesn't apply for IPL
-  return new Date(2026, mon, day);
+  // Year: assume 2026, use UTC to avoid timezone shift
+  return new Date(Date.UTC(2026, mon, day));
 }
 
 function getCutoff(match) {
