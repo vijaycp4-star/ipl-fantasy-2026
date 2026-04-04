@@ -435,8 +435,10 @@ function renderMatches() {
 
     // Should we reveal picks? Only after cutoff (locked or done)
     var revealed = done || locked;
-    // Before cutoff: hide which team was picked (prevent peeking via dropdown)
-    var showMyPick = revealed && myPred; // only show pick highlights after reveal
+    // Before cutoff: only show YOUR OWN pick (match dropdown to saved identity)
+    var myIdentity = localStorage.getItem('ipl_active_player') || '';
+    var isOwnView = activePlayer && activePlayer === myIdentity;
+    var showMyPick = myPred && (revealed || isOwnView); // own pick visible anytime, others only after reveal
     html += '<div class="match-card">';
     // Header
     html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #111114">' +
@@ -471,12 +473,12 @@ function renderMatches() {
       (done&&m.winner===m.team2?'<span style="font-size:10px">🏆</span>':'') +
     '</button>';
     html += '</div>';
-    // Before cutoff: show generic "you've predicted" without revealing team
-    if (!revealed && myPred) {
-      html += '<div style="margin-top:8px;text-align:center;font-size:10px;font-family:var(--mono);color:var(--green)">✓ You\'ve predicted for this match</div>';
+    // Before cutoff viewing someone else: generic message (no team revealed)
+    if (!revealed && !isOwnView && myPred) {
+      html += '<div style="margin-top:8px;text-align:center;font-size:10px;font-family:var(--mono);color:#555">✓ This player has predicted</div>';
     }
     // Remove prediction (only before cutoff, only if not revealed)
-    if (!done && !locked && myPred) html += '<button data-rmpred="'+m.id+'" style="margin-top:4px;background:none;border:none;cursor:pointer;color:#333;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Change prediction</button>';
+    if (!done && !locked && myPred && isOwnView) html += '<button data-rmpred="'+m.id+'" style="margin-top:4px;background:none;border:none;cursor:pointer;color:#333;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Change prediction</button>';
     // Detect "bet off" - all predictors picked the same team
     var uniquePicks = {};
     predEntries.forEach(function(pid) { uniquePicks[preds[pid]] = true; });
