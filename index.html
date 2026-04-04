@@ -246,6 +246,26 @@ function getStandings() {
   matches.forEach(function(m) {
     if (!m.winner) return;
     var mPreds = preds[m.id] || {};
+    var playerIds = players.map(function(p){return p.id;});
+    // Collect active predictions only
+    var activePreds = [];
+    players.forEach(function(p) {
+      var pred = mPreds[p.id];
+      if (pred) activePreds.push(pred);
+    });
+    // Bet off check: if all predictions are on the same team, skip scoring
+    var uniqueTeams = {};
+    activePreds.forEach(function(t){ uniqueTeams[t] = true; });
+    var allSameSide = activePreds.length > 0 && Object.keys(uniqueTeams).length === 1;
+    if (allSameSide) {
+      // Count as skipped for everyone (bet off, no money moves)
+      players.forEach(function(p) {
+        if (mPreds[p.id]) acc[p.id].skipped++;
+        else acc[p.id].skipped++;
+      });
+      return;
+    }
+
     var winners = [], losers = [];
     players.forEach(function(p) {
       var pred = mPreds[p.id];
@@ -413,6 +433,10 @@ function renderMatches() {
     var playerIds = (state.players||[]).map(function(p){return p.id;});
     var predEntries = Object.keys(preds).filter(function(pid){return playerIds.indexOf(pid)>=0;});
 
+    // Should we reveal picks? Only after cutoff (locked or done)
+    var revealed = done || locked;
+    // Before cutoff: hide which team was picked (prevent peeking via dropdown)
+    var showMyPick = revealed && myPred; // only show pick highlights after reveal
     html += '<div class="match-card">';
     // Header
     html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;border-bottom:1px solid #111114">' +
@@ -430,30 +454,38 @@ function renderMatches() {
     // Teams
     html += '<div style="padding:14px 16px"><div style="display:flex;align-items:center;gap:8px">';
     // Team 1
-    html += '<button '+(noPredict?'disabled':'')+' data-predict="'+m.id+'|'+m.team1+'" class="team-btn" style="border-color:'+(myPred===m.team1?t1.color:'var(--border2)')+';'+(done&&m.winner===m.team1?'background:'+t1.color+'15;':'')+(done&&m.winner!==m.team1?'opacity:.45;':'')+(locked?'opacity:.6;cursor:not-allowed;':'')+'">' +
+    html += '<button '+(noPredict?'disabled':'')+' data-predict="'+m.id+'|'+m.team1+'" class="team-btn" style="border-color:'+((showMyPick&&myPred===m.team1)?t1.color:'var(--border2)')+';'+(done&&m.winner===m.team1?'background:'+t1.color+'15;':'')+(done&&m.winner!==m.team1?'opacity:.45;':'')+(locked&&!done?'opacity:.6;cursor:not-allowed;':'')+'">' +
       (done&&m.winner===m.team1?'<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,'+t1.color+',transparent)"></div>':'') +
       badge(t1, 34) +
-      '<span style="font-family:var(--display);font-size:16px;letter-spacing:2px;color:'+((myPred===m.team1||m.winner===m.team1)?t1.color:'#666')+'">'+t1.short+'</span>' +
-      (myPred===m.team1&&!done?'<span style="font-size:9px;color:var(--green);font-family:var(--mono)">YOUR PICK</span>':'') +
+      '<span style="font-family:var(--display);font-size:16px;letter-spacing:2px;color:'+((showMyPick&&myPred===m.team1||m.winner===m.team1)?t1.color:'#666')+'">'+t1.short+'</span>' +
+      (showMyPick&&myPred===m.team1?'<span style="font-size:9px;color:var(--green);font-family:var(--mono)">YOUR PICK</span>':'') +
       (done&&m.winner===m.team1?'<span style="font-size:10px">🏆</span>':'') +
     '</button>';
     html += '<div style="font-family:var(--display);font-size:14px;color:#222;padding:0 2px">VS</div>';
     // Team 2
-    html += '<button '+(noPredict?'disabled':'')+' data-predict="'+m.id+'|'+m.team2+'" class="team-btn" style="border-color:'+(myPred===m.team2?t2.color:'var(--border2)')+';'+(done&&m.winner===m.team2?'background:'+t2.color+'15;':'')+(done&&m.winner!==m.team2?'opacity:.45;':'')+(locked?'opacity:.6;cursor:not-allowed;':'')+'">' +
+    html += '<button '+(noPredict?'disabled':'')+' data-predict="'+m.id+'|'+m.team2+'" class="team-btn" style="border-color:'+((showMyPick&&myPred===m.team2)?t2.color:'var(--border2)')+';'+(done&&m.winner===m.team2?'background:'+t2.color+'15;':'')+(done&&m.winner!==m.team2?'opacity:.45;':'')+(locked&&!done?'opacity:.6;cursor:not-allowed;':'')+'">' +
       (done&&m.winner===m.team2?'<div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent,'+t2.color+',transparent)"></div>':'') +
       badge(t2, 34) +
-      '<span style="font-family:var(--display);font-size:16px;letter-spacing:2px;color:'+((myPred===m.team2||m.winner===m.team2)?t2.color:'#666')+'">'+t2.short+'</span>' +
-      (myPred===m.team2&&!done?'<span style="font-size:9px;color:var(--green);font-family:var(--mono)">YOUR PICK</span>':'') +
+      '<span style="font-family:var(--display);font-size:16px;letter-spacing:2px;color:'+((showMyPick&&myPred===m.team2||m.winner===m.team2)?t2.color:'#666')+'">'+t2.short+'</span>' +
+      (showMyPick&&myPred===m.team2?'<span style="font-size:9px;color:var(--green);font-family:var(--mono)">YOUR PICK</span>':'') +
       (done&&m.winner===m.team2?'<span style="font-size:10px">🏆</span>':'') +
     '</button>';
     html += '</div>';
-    // Remove prediction
-    if (!done && !locked && myPred) html += '<button data-rmpred="'+m.id+'" style="margin-top:8px;background:none;border:none;cursor:pointer;color:#333;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Remove my prediction</button>';
+    // Before cutoff: show generic "you've predicted" without revealing team
+    if (!revealed && myPred) {
+      html += '<div style="margin-top:8px;text-align:center;font-size:10px;font-family:var(--mono);color:var(--green)">✓ You\'ve predicted for this match</div>';
+    }
+    // Remove prediction (only before cutoff, only if not revealed)
+    if (!done && !locked && myPred) html += '<button data-rmpred="'+m.id+'" style="margin-top:4px;background:none;border:none;cursor:pointer;color:#333;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Change prediction</button>';
+    // Detect "bet off" - all predictors picked the same team
+    var uniquePicks = {};
+    predEntries.forEach(function(pid) { uniquePicks[preds[pid]] = true; });
+    var allSameSide = predEntries.length > 0 && Object.keys(uniquePicks).length === 1;
     // Predictions list
     if (predEntries.length > 0) {
       var stake = state.stake || 100;
       var mWinners = [], mLosers = [];
-      if (done) {
+      if (done && !allSameSide) {
         predEntries.forEach(function(pid) { if (preds[pid]===m.winner) mWinners.push(pid); else mLosers.push(pid); });
       }
       var pot = mLosers.length * stake;
@@ -462,7 +494,9 @@ function renderMatches() {
       html += '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#111114;border:1px solid var(--border)">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
         '<span style="font-size:9px;color:#333;font-family:var(--mono);letter-spacing:1px">PREDICTIONS ('+predEntries.length+'/'+(state.players||[]).length+')</span>';
-      if (done && pot > 0) {
+      if (allSameSide && revealed) {
+        html += '<span style="font-size:10px;font-family:var(--mono);color:#888;background:#88888812;padding:2px 8px;border-radius:4px;border:1px solid #88888820">BET OFF — all same side</span>';
+      } else if (done && pot > 0) {
         html += '<span style="font-size:10px;font-family:var(--mono);color:var(--gold)">POT: ₹'+pot+' → split '+mWinners.length+'</span>';
       }
       html += '</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
@@ -470,19 +504,36 @@ function renderMatches() {
         var tid = preds[pid];
         var pl = (state.players||[]).find(function(p){return p.id===pid;});
         var pt = T(tid);
-        if (!pl||!pt) return;
-        var isCorrect = done && m.winner===tid;
-        var isWrong = done && m.winner && m.winner!==tid;
-        var c = isCorrect?'var(--green)':isWrong?'var(--red)':pt.color;
-        var amtText = '';
-        if (isCorrect && winShare > 0) amtText = ' <span style="font-size:9px;font-family:var(--mono);color:var(--green)">+₹'+winShare+'</span>';
-        if (isWrong) amtText = ' <span style="font-size:9px;font-family:var(--mono);color:var(--red)">-₹'+stake+'</span>';
-        html += '<div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:'+c+'12;border:1px solid '+c+'20">' +
-          '<span style="font-size:11px;font-family:var(--body);font-weight:600;color:'+c+'">'+esc(pl.name)+'</span>' +
-          '<span style="font-size:9px;font-family:var(--mono);color:'+pt.color+';opacity:.8">→ '+pt.short+'</span>' +
-          (isCorrect?'<span style="font-size:10px">✓</span>':'') + (isWrong?'<span style="font-size:10px">✗</span>':'') +
-          amtText +
-        '</div>';
+        if (!pl) return;
+        if (!revealed) {
+          // Before cutoff: show name + "Predicted ✓" but hide which team
+          html += '<div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:#55555512;border:1px solid #55555520">' +
+            '<span style="font-size:11px;font-family:var(--body);font-weight:600;color:#888">'+esc(pl.name)+'</span>' +
+            '<span style="font-size:9px;font-family:var(--mono);color:#555">Predicted ✓</span>' +
+          '</div>';
+        } else if (allSameSide) {
+          // Bet off: show pick but neutral color, no +/- amounts
+          html += '<div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:#55555512;border:1px solid #55555520">' +
+            '<span style="font-size:11px;font-family:var(--body);font-weight:600;color:#888">'+esc(pl.name)+'</span>' +
+            (pt?'<span style="font-size:9px;font-family:var(--mono);color:'+pt.color+';opacity:.8">→ '+pt.short+'</span>':'') +
+            '<span style="font-size:9px;font-family:var(--mono);color:#555">₹0</span>' +
+          '</div>';
+        } else {
+          // Revealed: show full pick with amounts
+          if (!pt) return;
+          var isCorrect = done && m.winner===tid;
+          var isWrong = done && m.winner && m.winner!==tid;
+          var c = isCorrect?'var(--green)':isWrong?'var(--red)':pt.color;
+          var amtText = '';
+          if (isCorrect && winShare > 0) amtText = ' <span style="font-size:9px;font-family:var(--mono);color:var(--green)">+₹'+winShare+'</span>';
+          if (isWrong) amtText = ' <span style="font-size:9px;font-family:var(--mono);color:var(--red)">-₹'+stake+'</span>';
+          html += '<div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:'+c+'12;border:1px solid '+c+'20">' +
+            '<span style="font-size:11px;font-family:var(--body);font-weight:600;color:'+c+'">'+esc(pl.name)+'</span>' +
+            '<span style="font-size:9px;font-family:var(--mono);color:'+pt.color+';opacity:.8">→ '+pt.short+'</span>' +
+            (isCorrect?'<span style="font-size:10px">✓</span>':'') + (isWrong?'<span style="font-size:10px">✗</span>':'') +
+            amtText +
+          '</div>';
+        }
       });
       html += '</div></div>';
     }
