@@ -436,7 +436,7 @@ function renderMatches() {
     // Should we reveal picks? Only after cutoff (locked or done)
     var revealed = done || locked;
     // Before cutoff: only show YOUR OWN pick (match dropdown to saved identity)
-    var myIdentity = localStorage.getItem('ipl_active_player') || '';
+    var myIdentity = localStorage.getItem('ipl_my_identity') || '';
     var isOwnView = activePlayer && activePlayer === myIdentity;
     var showMyPick = myPred && (revealed || isOwnView); // own pick visible anytime, others only after reveal
     html += '<div class="match-card">';
@@ -716,6 +716,8 @@ function bindEvents() {
   document.querySelectorAll('[data-predict]').forEach(function(b) {
     b.onclick = function() {
       if (!activePlayer) { flash('Select who you are first!'); return; }
+      // Lock this player as your identity (prevents peeking by switching dropdown)
+      localStorage.setItem('ipl_my_identity', activePlayer);
       var parts = b.getAttribute('data-predict').split('|');
       var mid=parts[0], tid=parts[1];
       var m = (state.matches||[]).find(function(x){return x.id===mid;});
@@ -780,6 +782,7 @@ function bindEvents() {
       state.players = (state.players||[]).filter(function(x){return x.id!==id;});
       state.predictions = np;
       if (activePlayer===id) { activePlayer=''; localStorage.setItem('ipl_active_player',''); }
+      if (localStorage.getItem('ipl_my_identity')===id) localStorage.removeItem('ipl_my_identity');
       saveState(state).then(function(){ flash((p?p.name:'Player')+' removed'); });
     };
   });
@@ -887,6 +890,7 @@ function bindEvents() {
   if (rb) rb.onclick = function() {
     if (!confirm('Delete ALL data? This cannot be undone.')) return;
     activePlayer=''; localStorage.setItem('ipl_active_player','');
+    localStorage.removeItem('ipl_my_identity');
     state = normalize({});
     saveState(state).then(function(){ flash('Reset complete'); });
   };
