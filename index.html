@@ -244,7 +244,7 @@ function getStandings() {
 
   // For each decided match, compute the pot
   matches.forEach(function(m) {
-    if (!m.winner) return;
+    if (!m.winner || m.winner === 'abandoned') return;
     var mPreds = preds[m.id] || {};
     var playerIds = players.map(function(p){return p.id;});
     // Collect active predictions only
@@ -427,6 +427,7 @@ function renderMatches() {
     var preds = (state.predictions||{})[m.id] || {};
     var myPred = activePlayer ? preds[activePlayer] : null;
     var done = !!m.winner;
+    var abandoned = m.winner === 'abandoned';
     var locked = !done && isLocked(m);
     var cutoffLabel = !done ? getCutoffLabel(m) : '';
     var noPredict = done || locked;
@@ -446,6 +447,7 @@ function renderMatches() {
         '<span style="font-family:var(--display);font-size:13px;color:#333;background:#111114;padding:2px 8px;border-radius:6px">#'+m.num+'</span>' +
         pill(m.stage||'League', m.stage==='League'?'#555':'var(--gold)', true) +
         (locked?'<span style="font-size:9px;font-family:var(--mono);color:var(--red);background:#F8717112;padding:2px 8px;border-radius:4px;border:1px solid #F8717120">🔒 LOCKED</span>':'') +
+        (abandoned?'<span style="font-size:9px;font-family:var(--mono);color:#888;background:#88888812;padding:2px 8px;border-radius:4px;border:1px solid #88888820">🌧 ABANDONED</span>':'') +
         (cutoffLabel && cutoffLabel!=='LOCKED'?'<span style="font-size:9px;font-family:var(--mono);color:var(--orange);background:#E8872A12;padding:2px 8px;border-radius:4px;border:1px solid #E8872A20">⏱ '+cutoffLabel+'</span>':'') +
       '</div>' +
       '<div style="display:flex;gap:6px;align-items:center">' +
@@ -487,7 +489,7 @@ function renderMatches() {
     if (predEntries.length > 0) {
       var stake = state.stake || 100;
       var mWinners = [], mLosers = [];
-      if (done && !allSameSide) {
+      if (done && !allSameSide && !abandoned) {
         predEntries.forEach(function(pid) { if (preds[pid]===m.winner) mWinners.push(pid); else mLosers.push(pid); });
       }
       var pot = mLosers.length * stake;
@@ -496,9 +498,9 @@ function renderMatches() {
       html += '<div style="margin-top:12px;padding:10px 12px;border-radius:10px;background:#111114;border:1px solid var(--border)">';
       html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
         '<span style="font-size:9px;color:#333;font-family:var(--mono);letter-spacing:1px">PREDICTIONS ('+predEntries.length+'/'+(state.players||[]).length+')</span>';
-      if (allSameSide && revealed) {
-        html += '<span style="font-size:10px;font-family:var(--mono);color:#888;background:#88888812;padding:2px 8px;border-radius:4px;border:1px solid #88888820">BET OFF — all same side</span>';
-      } else if (done && pot > 0) {
+      if ((allSameSide || abandoned) && revealed) {
+        html += '<span style="font-size:10px;font-family:var(--mono);color:#888;background:#88888812;padding:2px 8px;border-radius:4px;border:1px solid #88888820">'+(abandoned?'🌧 NO RESULT':'BET OFF — all same side')+'</span>';
+      } else if (done && !abandoned && pot > 0) {
         html += '<span style="font-size:10px;font-family:var(--mono);color:var(--gold)">POT: ₹'+pot+' → split '+mWinners.length+'</span>';
       }
       html += '</div><div style="display:flex;flex-wrap:wrap;gap:6px">';
@@ -513,7 +515,7 @@ function renderMatches() {
             '<span style="font-size:11px;font-family:var(--body);font-weight:600;color:#888">'+esc(pl.name)+'</span>' +
             '<span style="font-size:9px;font-family:var(--mono);color:#555">Predicted ✓</span>' +
           '</div>';
-        } else if (allSameSide) {
+        } else if (allSameSide || abandoned) {
           // Bet off: show pick but neutral color, no +/- amounts
           html += '<div style="display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;background:#55555512;border:1px solid #55555520">' +
             '<span style="font-size:11px;font-family:var(--body);font-weight:600;color:#888">'+esc(pl.name)+'</span>' +
@@ -546,9 +548,11 @@ function renderMatches() {
         '<div style="display:flex;gap:6px">' +
           '<button class="sm-btn" data-declare="'+m.id+'|'+m.team1+'" style="flex:1;color:'+t1.color+';border-color:'+t1.color+'30;font-family:var(--display);font-size:12px;letter-spacing:1.5px;padding:8px 10px">'+t1.short+' WON</button>' +
           '<button class="sm-btn" data-declare="'+m.id+'|'+m.team2+'" style="flex:1;color:'+t2.color+';border-color:'+t2.color+'30;font-family:var(--display);font-size:12px;letter-spacing:1.5px;padding:8px 10px">'+t2.short+' WON</button>' +
-        '</div></div>';
+        '</div>' +
+        '<button class="sm-btn" data-abandon="'+m.id+'" style="width:100%;margin-top:6px;color:#888;border-color:#88888830;font-family:var(--display);font-size:11px;letter-spacing:1.5px;padding:6px 10px">🌧 ABANDON / NO RESULT</button>' +
+      '</div>';
     } else {
-      html += '<button data-undo="'+m.id+'" style="margin-top:8px;background:none;border:none;cursor:pointer;color:#2a2a2e;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Undo result</button>';
+      html += '<button data-undo="'+m.id+'" style="margin-top:8px;background:none;border:none;cursor:pointer;color:#2a2a2e;font-size:10px;font-family:var(--mono);padding:4px 0;width:100%;text-align:center">↩ Undo '+(abandoned?'abandon':'result')+'</button>';
     }
     html += '</div></div>';
   });
@@ -605,7 +609,7 @@ function renderSchedule() {
           '<span style="font-family:var(--display);font-size:10px;color:#222">vs</span>' +
           '<span style="font-family:var(--mono);font-size:11px;color:'+t2.color+';width:38px">'+t2.short+'</span>'+badge(t2,22) +
           '<span style="flex:1;font-family:var(--mono);font-size:9px;color:#333;text-align:right">'+esc(m.date||'')+' '+(m.stage!=='League'?'· '+m.stage:'')+'</span>' +
-          (m.winner?pill('✓ '+T(m.winner).short,'var(--green)',true):'') +
+          (m.winner==='abandoned'?pill('🌧 Abandoned','#888',true):(m.winner?pill('✓ '+T(m.winner).short,'var(--green)',true):'')) +
           '<button class="sm-btn" data-startedit="'+m.id+'" style="padding:4px 8px;font-size:10px">Edit</button>' +
           '<button class="del-btn" data-delmatch="'+m.id+'">✕</button>' +
         '</div>';
@@ -750,6 +754,14 @@ function bindEvents() {
       var parts = b.getAttribute('data-declare').split('|');
       state.matches = (state.matches||[]).map(function(m){ return m.id===parts[0] ? Object.assign({},m,{winner:parts[1]}) : m; });
       saveState(state).then(function(){ flash(T(parts[1]).short+' wins! Scores updated.'); });
+    };
+  });
+  // Abandon match
+  document.querySelectorAll('[data-abandon]').forEach(function(b) {
+    b.onclick = function() {
+      var mid = b.getAttribute('data-abandon');
+      state.matches = (state.matches||[]).map(function(m){ return m.id===mid ? Object.assign({},m,{winner:'abandoned'}) : m; });
+      saveState(state).then(function(){ flash('🌧 Match abandoned — no bets counted'); });
     };
   });
   // Undo
