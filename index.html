@@ -589,7 +589,7 @@ function renderSchedule() {
     matches.forEach(function(m) {
       var t1=T(m.team1), t2=T(m.team2);
       if (!t1||!t2) return;
-      if (editMatchId===m.id) {
+      if (editMatchId===m.id && !m.winner) {
         html += '<div class="card" style="padding:14px">' +
           '<div style="display:flex;gap:8px;margin-bottom:8px">' +
             '<div style="flex:1"><div class="lbl">TEAM 1</div><select id="editT1" class="input-field" style="font-size:12px">'+TEAMS.map(function(t){return '<option value="'+t.id+'" '+(m.team1===t.id?'selected':'')+'>'+t.short+'</option>';}).join('')+'</select></div>' +
@@ -610,8 +610,11 @@ function renderSchedule() {
           '<span style="font-family:var(--mono);font-size:11px;color:'+t2.color+';width:38px">'+t2.short+'</span>'+badge(t2,22) +
           '<span style="flex:1;font-family:var(--mono);font-size:9px;color:#333;text-align:right">'+esc(m.date||'')+' '+(m.stage!=='League'?'· '+m.stage:'')+'</span>' +
           (m.winner==='abandoned'?pill('🌧 Abandoned','#888',true):(m.winner?pill('✓ '+T(m.winner).short,'var(--green)',true):'')) +
-          '<button class="sm-btn" data-startedit="'+m.id+'" style="padding:4px 8px;font-size:10px">Edit</button>' +
-          '<button class="del-btn" data-delmatch="'+m.id+'">✕</button>' +
+          (m.winner
+            ? '<span style="font-size:9px;font-family:var(--mono);color:#333;padding:4px 8px">🔒</span>'
+            : '<button class="sm-btn" data-startedit="'+m.id+'" style="padding:4px 8px;font-size:10px">Edit</button>' +
+              '<button class="del-btn" data-delmatch="'+m.id+'">✕</button>'
+          ) +
         '</div>';
       }
     });
@@ -840,12 +843,21 @@ function bindEvents() {
     };
     r.readAsText(f); e.target.value='';
   };
-  // Edit match
-  document.querySelectorAll('[data-startedit]').forEach(function(b) { b.onclick=function(){ editMatchId=b.getAttribute('data-startedit'); render(); }; });
+  // Edit match (blocked for completed)
+  document.querySelectorAll('[data-startedit]').forEach(function(b) {
+    b.onclick=function(){
+      var mid = b.getAttribute('data-startedit');
+      var m = (state.matches||[]).find(function(x){return x.id===mid;});
+      if (m && m.winner) { flash('🔒 Completed matches are locked'); return; }
+      editMatchId=mid; render();
+    };
+  });
   document.querySelectorAll('[data-canceledit]').forEach(function(b) { b.onclick=function(){ editMatchId=null; render(); }; });
   document.querySelectorAll('[data-saveedit]').forEach(function(b) {
     b.onclick = function() {
       var mid=b.getAttribute('data-saveedit');
+      var m = (state.matches||[]).find(function(x){return x.id===mid;});
+      if (m && m.winner) { flash('🔒 Completed matches are locked'); return; }
       var t1=document.getElementById('editT1'); t1=t1?t1.value:'';
       var t2=document.getElementById('editT2'); t2=t2?t2.value:'';
       var dt=document.getElementById('editDate'); dt=dt?dt.value.trim():'';
@@ -857,10 +869,13 @@ function bindEvents() {
       saveState(state).then(function(){ flash('Match updated'); });
     };
   });
-  // Delete match
+  // Delete match (blocked for completed, requires confirmation)
   document.querySelectorAll('[data-delmatch]').forEach(function(b) {
     b.onclick = function() {
       var id=b.getAttribute('data-delmatch');
+      var m = (state.matches||[]).find(function(x){return x.id===id;});
+      if (m && m.winner) { flash('🔒 Completed matches are locked'); return; }
+      if (!confirm('Delete match #'+(m?m.num:'?')+' ('+((m?T(m.team1).short:''))+' vs '+(m?T(m.team2).short:'')+')? This cannot be undone.')) return;
       var np=JSON.parse(JSON.stringify(state.predictions||{})); delete np[id];
       state.matches=(state.matches||[]).filter(function(m){return m.id!==id;}).map(function(m,i){return Object.assign({},m,{num:i+1});});
       state.predictions=np;
