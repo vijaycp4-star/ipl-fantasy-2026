@@ -561,62 +561,24 @@ function renderMatches() {
 
 /* ─── SCHEDULE ─── */
 function renderSchedule() {
-  var stages = ['League','Qualifier 1','Eliminator','Qualifier 2','Final'];
   var matches = state.matches || [];
-  var html = '<div class="card" style="margin-bottom:16px">' +
-    '<div style="font-family:var(--body);font-weight:700;font-size:15px;color:#ddd;margin-bottom:6px">Upload Schedule</div>' +
-    '<p style="font-family:var(--mono);font-size:11px;color:#444;margin-bottom:4px;line-height:1.6">Upload a CSV. Format: MatchNum, Team1, Team2, Date, Venue, Stage</p>' +
-    '<div style="font-family:var(--mono);font-size:10px;color:#555;padding:8px 12px;background:#111114;border-radius:8px;margin-bottom:12px;line-height:1.8">1, CSK, MI, 22-Mar, Chennai, League</div>' +
-    '<label class="sm-btn" style="color:var(--blue);border-color:#60A5FA30;padding:10px 16px;font-family:var(--display);font-size:13px;letter-spacing:1.5px;cursor:pointer;display:inline-flex">📁 UPLOAD CSV <input type="file" id="csvUpload" accept=".csv,.txt" style="display:none"></label>' +
-  '</div>';
-
-  html += '<div class="card" style="margin-bottom:16px">' +
-    '<div style="font-family:var(--body);font-weight:700;font-size:15px;color:#ddd;margin-bottom:12px">Add Match Manually</div>' +
-    '<div style="display:flex;gap:8px;margin-bottom:10px">' +
-      '<div style="flex:1"><div class="lbl">TEAM 1</div><select id="addT1" class="input-field" style="font-size:12px"><option value="">Select...</option>'+TEAMS.map(function(t){return '<option value="'+t.id+'">'+t.short+' — '+t.name+'</option>';}).join('')+'</select></div>' +
-      '<div style="flex:1"><div class="lbl">TEAM 2</div><select id="addT2" class="input-field" style="font-size:12px"><option value="">Select...</option>'+TEAMS.map(function(t){return '<option value="'+t.id+'">'+t.short+' — '+t.name+'</option>';}).join('')+'</select></div>' +
-    '</div>' +
-    '<div style="display:flex;gap:8px;margin-bottom:10px">' +
-      '<div style="flex:1"><div class="lbl">DATE</div><input type="text" id="addDate" class="input-field" style="font-size:12px" placeholder="e.g. 22 Mar"></div>' +
-      '<div style="flex:1"><div class="lbl">VENUE</div><input id="addVenue" class="input-field" style="font-size:12px" placeholder="Optional"></div>' +
-      '<div style="flex:1"><div class="lbl">STAGE</div><select id="addStage" class="input-field" style="font-size:12px">'+stages.map(function(s){return '<option value="'+s+'">'+s+'</option>';}).join('')+'</select></div>' +
-    '</div>' +
-    '<button id="addMatchBtn" class="primary-btn" style="font-size:14px">ADD MATCH</button>' +
-  '</div>';
+  var decided = matches.filter(function(m){return m.winner;}).length;
+  var html = '<div style="padding:12px 16px;border-radius:10px;margin-bottom:16px;background:#F5C84208;border:1px solid #F5C84215;font-family:var(--mono);font-size:11px;color:#F5C84280">🔒 Schedule frozen — '+matches.length+' matches locked ('+decided+' decided, '+(matches.length-decided)+' upcoming)</div>';
 
   if (matches.length > 0) {
     html += '<div style="font-family:var(--display);font-size:14px;color:#333;letter-spacing:3px;margin-bottom:12px">ALL MATCHES ('+matches.length+')</div><div style="display:flex;flex-direction:column;gap:4px">';
     matches.forEach(function(m) {
       var t1=T(m.team1), t2=T(m.team2);
       if (!t1||!t2) return;
-      if (editMatchId===m.id && !m.winner) {
-        html += '<div class="card" style="padding:14px">' +
-          '<div style="display:flex;gap:8px;margin-bottom:8px">' +
-            '<div style="flex:1"><div class="lbl">TEAM 1</div><select id="editT1" class="input-field" style="font-size:12px">'+TEAMS.map(function(t){return '<option value="'+t.id+'" '+(m.team1===t.id?'selected':'')+'>'+t.short+'</option>';}).join('')+'</select></div>' +
-            '<div style="flex:1"><div class="lbl">TEAM 2</div><select id="editT2" class="input-field" style="font-size:12px">'+TEAMS.map(function(t){return '<option value="'+t.id+'" '+(m.team2===t.id?'selected':'')+'>'+t.short+'</option>';}).join('')+'</select></div>' +
-            '<div style="flex:1"><div class="lbl">DATE</div><input id="editDate" class="input-field" style="font-size:12px" value="'+esc(m.date||'')+'"></div>' +
-          '</div>' +
-          '<div style="display:flex;gap:8px;margin-bottom:10px">' +
-            '<div style="flex:1"><div class="lbl">VENUE</div><input id="editVenue" class="input-field" style="font-size:12px" value="'+esc(m.venue||'')+'"></div>' +
-            '<div style="flex:1"><div class="lbl">STAGE</div><select id="editStage" class="input-field" style="font-size:12px">'+stages.map(function(s){return '<option value="'+s+'" '+(m.stage===s?'selected':'')+'>'+s+'</option>';}).join('')+'</select></div>' +
-          '</div>' +
-          '<div style="display:flex;gap:6px"><button class="sm-btn" data-saveedit="'+m.id+'" style="color:var(--green);border-color:#4ADE8040">Save</button><button class="sm-btn" data-canceledit="1">Cancel</button></div>' +
-        '</div>';
-      } else {
-        html += '<div class="row-hover" style="display:flex;align-items:center;padding:10px 14px;background:var(--card);border-radius:8px;border:1px solid #131316;gap:8px">' +
-          '<span style="font-family:var(--display);font-size:13px;color:#333;width:30px">#'+m.num+'</span>' +
-          badge(t1,22)+'<span style="font-family:var(--mono);font-size:11px;color:'+t1.color+';width:38px">'+t1.short+'</span>' +
-          '<span style="font-family:var(--display);font-size:10px;color:#222">vs</span>' +
-          '<span style="font-family:var(--mono);font-size:11px;color:'+t2.color+';width:38px">'+t2.short+'</span>'+badge(t2,22) +
-          '<span style="flex:1;font-family:var(--mono);font-size:9px;color:#333;text-align:right">'+esc(m.date||'')+' '+(m.stage!=='League'?'· '+m.stage:'')+'</span>' +
-          (m.winner==='abandoned'?pill('🌧 Abandoned','#888',true):(m.winner?pill('✓ '+T(m.winner).short,'var(--green)',true):'')) +
-          (m.winner
-            ? '<span style="font-size:9px;font-family:var(--mono);color:#333;padding:4px 8px">🔒</span>'
-            : '<button class="sm-btn" data-startedit="'+m.id+'" style="padding:4px 8px;font-size:10px">Edit</button>' +
-              '<button class="del-btn" data-delmatch="'+m.id+'">✕</button>'
-          ) +
-        '</div>';
-      }
+      html += '<div class="row-hover" style="display:flex;align-items:center;padding:10px 14px;background:var(--card);border-radius:8px;border:1px solid #131316;gap:8px">' +
+        '<span style="font-family:var(--display);font-size:13px;color:#333;width:30px">#'+m.num+'</span>' +
+        badge(t1,22)+'<span style="font-family:var(--mono);font-size:11px;color:'+t1.color+';width:38px">'+t1.short+'</span>' +
+        '<span style="font-family:var(--display);font-size:10px;color:#222">vs</span>' +
+        '<span style="font-family:var(--mono);font-size:11px;color:'+t2.color+';width:38px">'+t2.short+'</span>'+badge(t2,22) +
+        '<span style="flex:1;font-family:var(--mono);font-size:9px;color:#333;text-align:right">'+esc(m.date||'')+' '+(m.stage!=='League'?'· '+m.stage:'')+'</span>' +
+        (m.winner==='abandoned'?pill('🌧 Abandoned','#888',true):(m.winner?pill('✓ '+T(m.winner).short,'var(--green)',true):pill('Upcoming','#555',false))) +
+        '<span style="font-size:9px;font-family:var(--mono);color:#333;padding:4px 8px">🔒</span>' +
+      '</div>';
     });
     html += '</div>';
   }
